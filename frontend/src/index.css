@@ -1,11 +1,43 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: #0f172a;
-    background-color: #f8fafc;
+    color: #17243A;
+    background-color: #F3F7FC;
   }
+}
+
+/* Custom Leaflet Map and Popup Enhancements */
+.leaflet-container {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+  z-index: 10;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  color: #17243A !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px -5px rgba(23, 36, 58, 0.18), 0 8px 10px -6px rgba(23, 36, 58, 0.1) !important;
+  border: 1px solid #DCE6F1 !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.5 !important;
+}
+
+.leaflet-popup-tip {
+  background: #ffffff !important;
+  border: 1px solid #DCE6F1 !important;
+}
+
+.custom-leaflet-marker {
+  background: transparent !important;
+  border: none !important;
 }
 
 .font-handwriting {

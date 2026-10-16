@@ -7,6 +7,15 @@ import { WhySternkraft } from './components/WhySternkraft';
 import { EmergencyInstructions } from './components/EmergencyInstructions';
 import { Footer } from './components/Footer';
 import { PlaceholderPage } from './components/PlaceholderPage';
+import { PlatformDashboardPage } from './pages/PlatformDashboardPage';
+import { FloodDashboardPage } from './pages/FloodDashboardPage';
+import { SosPage } from './pages/SosPage';
+import { RescueLayout } from './components/RescueLayout';
+import { DashboardPage } from './pages/DashboardPage';
+import { IncidentsPage } from './pages/IncidentsPage';
+import { MapPage } from './pages/MapPage';
+import { CommunicationsPage } from './pages/CommunicationsPage';
+import { DeviceStatusPage } from './pages/DeviceStatusPage';
 import {
   TopographicLinesLeft,
   TopographicLinesRight,
@@ -18,6 +27,12 @@ export const App: React.FC = () => {
     const path = window.location.pathname;
     if (path === '/sos') return '/sos';
     if (path === '/dashboard') return '/dashboard';
+    if (path === '/flood/dashboard' || path === '/flood') return '/flood/dashboard';
+    if (path === '/rescue/dashboard') return '/rescue/dashboard';
+    if (path === '/rescue/incidents' || path === '/incidents') return '/rescue/incidents';
+    if (path === '/rescue/map' || path === '/map') return '/rescue/map';
+    if (path === '/rescue/communications') return '/rescue/communications';
+    if (path === '/rescue/devices') return '/rescue/devices';
     return '/';
   });
 
@@ -36,6 +51,12 @@ export const App: React.FC = () => {
       const path = window.location.pathname;
       if (path === '/sos') setCurrentRoute('/sos');
       else if (path === '/dashboard') setCurrentRoute('/dashboard');
+      else if (path === '/flood/dashboard' || path === '/flood') setCurrentRoute('/flood/dashboard');
+      else if (path === '/rescue/dashboard') setCurrentRoute('/rescue/dashboard');
+      else if (path === '/rescue/incidents' || path === '/incidents') setCurrentRoute('/rescue/incidents');
+      else if (path === '/rescue/map' || path === '/map') setCurrentRoute('/rescue/map');
+      else if (path === '/rescue/communications') setCurrentRoute('/rescue/communications');
+      else if (path === '/rescue/devices') setCurrentRoute('/rescue/devices');
       else setCurrentRoute('/');
     };
 
@@ -43,6 +64,79 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
+  // 1. Main Platform Launchpad Dashboard (`/dashboard`)
+  if (currentRoute === '/dashboard') {
+    return <PlatformDashboardPage onNavigate={handleNavigate} />;
+  }
+
+  // 2. Separate Flood Monitoring Module Workspace (`/flood/dashboard`)
+  if (currentRoute === '/flood/dashboard' || currentRoute === '/flood') {
+    return <FloodDashboardPage onNavigate={handleNavigate} />;
+  }
+
+  // 2. Rescue Communication Workspace Routes (`/rescue/*`)
+  const isRescueWorkspace =
+    currentRoute === '/rescue/dashboard' ||
+    currentRoute === '/rescue/incidents' ||
+    currentRoute === '/rescue/map' ||
+    currentRoute === '/rescue/communications' ||
+    currentRoute === '/rescue/devices' ||
+    currentRoute === '/map' ||
+    currentRoute === '/incidents';
+
+  if (isRescueWorkspace) {
+    // Determine active workspace route for sidebar highlighting
+    const activeWorkspaceRoute: AppRoute =
+      currentRoute === '/incidents'
+        ? '/rescue/incidents'
+        : currentRoute === '/map'
+        ? '/rescue/map'
+        : currentRoute;
+
+    let pageTitle = 'Rescue Operations Overview';
+    let pageSubtitle = 'Situational awareness, incoming distress queue, and verified gateway status.';
+
+    if (activeWorkspaceRoute === '/rescue/incidents') {
+      pageTitle = 'Live Incidents & Dispatch';
+      pageSubtitle = 'Searchable incident triage, priority queues, and operator lifecycle controls.';
+    } else if (activeWorkspaceRoute === '/rescue/map') {
+      pageTitle = 'Live Map & Incident Locations';
+      pageSubtitle = 'Tactical coordinate plotting, valid GPS positioning, and manual landmark triage.';
+    } else if (activeWorkspaceRoute === '/rescue/communications') {
+      pageTitle = 'Communication & Audit Log';
+      pageSubtitle = 'Chronological event records of gateway receptions, SSD commits, and operator dispatch.';
+    } else if (activeWorkspaceRoute === '/rescue/devices') {
+      pageTitle = 'Gateway & Device Status';
+      pageSubtitle = 'Diagnostic health telemetry for local backend, ESP32 gateway link, and hardware storage.';
+    }
+
+    return (
+      <RescueLayout
+        currentRoute={activeWorkspaceRoute}
+        onNavigate={handleNavigate}
+        title={pageTitle}
+        subtitle={pageSubtitle}
+      >
+        {activeWorkspaceRoute === '/rescue/dashboard' && (
+          <DashboardPage onNavigate={handleNavigate} />
+        )}
+        {activeWorkspaceRoute === '/rescue/incidents' && (
+          <IncidentsPage />
+        )}
+        {activeWorkspaceRoute === '/rescue/map' && (
+          <MapPage onNavigate={handleNavigate} />
+        )}
+        {activeWorkspaceRoute === '/rescue/communications' && (
+          <CommunicationsPage onNavigate={handleNavigate} />
+        )}
+        {activeWorkspaceRoute === '/rescue/devices' && (
+          <DeviceStatusPage onNavigate={handleNavigate} />
+        )}
+      </RescueLayout>
+    );
+  }
+
+  // 3. Public Civilian Portal (`/` landing page and `/sos`)
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-[#f4f9fd] via-[#eef6fc] to-[#f8fafc] text-slate-800 flex flex-col justify-between overflow-x-hidden selection:bg-red-600 selection:text-white">
       {/* Background Layer: Atmospheric daylight ambient fields */}
@@ -83,6 +177,8 @@ export const App: React.FC = () => {
               {/* 4. "Quick Emergency Instructions" */}
               <EmergencyInstructions />
             </>
+          ) : currentRoute === '/sos' ? (
+            <SosPage onNavigate={handleNavigate} />
           ) : (
             <PlaceholderPage
               route={currentRoute}
@@ -91,7 +187,7 @@ export const App: React.FC = () => {
           )}
         </main>
 
-        {/* 4. Compact Footer */}
+        {/* Compact Footer */}
         <Footer />
       </div>
     </div>

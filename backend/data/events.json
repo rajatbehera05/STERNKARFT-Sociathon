@@ -1,0 +1,86 @@
+[
+  {
+    "id": "EVT-0012",
+    "incident_id": "INC-0001",
+    "event_type": "STATUS_CHANGED",
+    "details": "Status updated to RESPONDING: \"Rescue boat dispatched\"",
+    "timestamp": "2026-10-16T15:32:11.104Z"
+  },
+  {
+    "id": "EVT-0011",
+    "incident_id": "INC-0006",
+    "event_type": "OPERATOR_ACKNOWLEDGED",
+    "details": "Status updated to ACKNOWLEDGED: \"Rescue boat unit assigned.\"",
+    "timestamp": "2026-10-16T13:37:04.728Z"
+  },
+  {
+    "id": "EVT-0010",
+    "incident_id": "INC-0006",
+    "event_type": "PERSISTED_LOCALLY",
+    "details": "Incident INC-0006 validated by Zod and persisted locally to ./data/incidents.json (CRITICAL priority).",
+    "timestamp": "2026-10-16T13:36:23.962Z"
+  },
+  {
+    "id": "EVT-0009",
+    "incident_id": "INC-0006",
+    "event_type": "GATEWAY_RECEIVED",
+    "details": "Distress alert ingested via gateway receiver (Category: TRAPPED_FLOOD, Headcount: 4).",
+    "timestamp": "2026-10-16T13:36:23.959Z"
+  },
+  {
+    "id": "EVT-0008",
+    "incident_id": "INC-0005",
+    "event_type": "PERSISTED_LOCALLY",
+    "details": "Alert ingested from gateway and persisted locally (CRITICAL priority).",
+    "timestamp": "2026-10-16T11:16:08.305Z"
+  },
+  {
+    "id": "EVT-0007",
+    "incident_id": "INC-0001",
+    "event_type": "OPERATOR_ACKNOWLEDGED",
+    "details": "Status updated to ACKNOWLEDGED: \"Assigned to Rescue Squad 3\"",
+    "timestamp": "2026-10-16T11:16:00.499Z"
+  },
+  {
+    "id": "EVT-0006",
+    "incident_id": "INC-0003",
+    "event_type": "OPERATOR_ACKNOWLEDGED",
+    "details": "Status updated to ACKNOWLEDGED: \"Boat Unit Gamma dispatched\"",
+    "timestamp": "2026-10-16T11:05:47.778Z"
+  },
+  {
+    "id": "EVT-0001",
+    "incident_id": "INC-0001",
+    "event_type": "PERSISTED_LOCALLY",
+    "details": "Alert received from ESP32 gateway and committed to local storage.",
+    "timestamp": "2026-10-16T15:45:00.000Z"
+  },
+  {
+    "id": "EVT-0002",
+    "incident_id": "INC-0002",
+    "event_type": "PERSISTED_LOCALLY",
+    "details": "Alert received from ESP32 gateway and committed to local storage.",
+    "timestamp": "2026-10-16T15:20:00.000Z"
+  },
+  {
+    "id": "EVT-0003",
+    "incident_id": "INC-0002",
+    "event_type": "OPERATOR_ACKNOWLEDGED",
+    "details": "Rescue Operator acknowledged incident; prioritizing rescue dispatch.",
+    "timestamp": "2026-10-16T15:28:10.000Z"
+  },
+  {
+    "id": "EVT-0004",
+    "incident_id": "INC-0003",
+    "event_type": "PERSISTED_LOCALLY",
+    "details": "Alert received from ESP32 gateway without GPS; manual landmark recorded.",
+    "timestamp": "2026-10-16T15:10:00.000Z"
+  },
+  {
+    "id": "EVT-0005",
+    "incident_id": "INC-0004",
+    "event_type": "STATUS_CHANGED",
+    "details": "Incident lifecycle transitioned to RESOLVED after civilian evacuation.",
+    "timestamp": "2026-10-16T15:05:00.000Z"
+  }
+]
