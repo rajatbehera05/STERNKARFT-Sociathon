@@ -15,7 +15,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
       <div className="absolute inset-0 z-0 pointer-events-none select-none">
         {/* Full Edge-to-Edge Hero Background Photo */}
         <div
-          className="absolute inset-0 bg-no-repeat bg-cover bg-[position:center_right] md:bg-[position:center_right] lg:bg-center"
+          className="absolute inset-0 bg-no-repeat bg-cover bg-[position:80%_center] md:bg-[position:center_right]"
           style={{
             backgroundImage: "url('/images/rescue-hero.jpg')",
           }}
@@ -23,15 +23,15 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
           aria-label="Search and rescue helicopter and responder in boat conducting flood evacuation operations"
         />
 
-        {/* Restrained, Non-Blurry Left Daylight Gradient for Crystal-Clear Text Contrast */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#f4f9fd] via-[#f4f9fd]/85 via-35% sm:via-[#f4f9fd]/65 sm:via-50% md:via-[#f4f9fd]/30 md:via-62% to-transparent to-80%" />
+        {/* Restrained Left Daylight Gradient for Crystal-Clear Text Contrast */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#f4f9fd]/95 via-[#f4f9fd]/85 via-35% sm:via-[#f4f9fd]/60 sm:via-50% md:via-[#f4f9fd]/20 md:via-62% to-transparent to-80%" />
 
-        {/* Deep, Seamless Bottom Transition Fading Naturally into the Next Section */}
-        <div className="absolute inset-x-0 bottom-0 h-28 sm:h-36 bg-gradient-to-t from-[#f4f9fd] via-[#f4f9fd]/80 to-transparent pointer-events-none" />
+        {/* Subtle Bottom Transition to bridge to the next section without covering the boat */}
+        <div className="absolute inset-x-0 bottom-0 h-14 sm:h-20 bg-gradient-to-t from-[#f4f9fd] to-transparent pointer-events-none" />
       </div>
 
       {/* Hero Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-12 sm:pt-6 sm:pb-16 lg:pt-8 lg:pb-20">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-14 sm:pt-6 sm:pb-20 lg:pt-8 lg:pb-24 min-h-[540px] sm:min-h-[600px] flex items-center">
         <div className="max-w-xl lg:max-w-2xl flex flex-col items-start">
           {/* Live Device Local Clock */}
           <div className="mb-4">
