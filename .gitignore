@@ -1,0 +1,151 @@
+# ==============================================================================
+# STERNKRAFT-Sociathon .gitignore
+# Production-ready gitignore for Software + IoT Hackathon development
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Secrets, Credentials, & Environment Variables (CRITICAL FOR COLLABORATION)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.env
+*.pem
+*.key
+*.crt
+*.pfx
+secrets.json
+secrets.yaml
+secrets.yml
+
+# Hardware / IoT credentials (Wi-Fi, MQTT, Cloud API keys)
+secrets.h
+credentials.h
+wifi_credentials.h
+config_private.h
+!*.example.h
+
+# ------------------------------------------------------------------------------
+# Operating System & Workspace Files
+# ------------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# IDE & Editor caches
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# ------------------------------------------------------------------------------
+# General Dependencies & Package Managers
+# ------------------------------------------------------------------------------
+# Node.js / Web Frontend & Backend
+node_modules/
+jspm_packages/
+.npm/
+.yarn/cache/
+.pnp*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.mypy_cache/
+
+# Java / JVM
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+target/
+.gradle/
+
+# ------------------------------------------------------------------------------
+# Firmware, Hardware & Embedded IoT Build Outputs
+# ------------------------------------------------------------------------------
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Arduino IDE
+*.hex
+*.elf
+*.bin
+*.eep
+*.lst
+arduino_build/
+arduino_cache/
+
+# Compiled Object Files & C/C++ Binaries
+*.o
+*.obj
+*.out
+*.dylib
+*.dll
+*.exe
+
+# Hardware CAD & Simulation temp files
+*.tmp
+*.bak
+*~
+
+# ------------------------------------------------------------------------------
+# Build Artifacts, Bundles, & Temporary Files
+# ------------------------------------------------------------------------------
+dist/
+out/
+.next/
+.nuxt/
+.cache/
+tmp/
+temp/
+coverage/
+*.log

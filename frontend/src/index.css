@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #0f172a;
+    background-color: #f8fafc;
+  }
+}
+
+.font-handwriting {
+  font-family: 'Caveat', cursive, Georgia, serif;
+}
+
+/* Accessible focus ring */
+:focus-visible {
+  outline: 2px solid #dc2626;
+  outline-offset: 2px;
+}
+
+/* 3D Rotating Cubes Animations */
+@keyframes rotateCubeMain {
+  0% {
+    transform: rotateX(22deg) rotateY(0deg) rotateZ(4deg);
+  }
+  50% {
+    transform: rotateX(48deg) rotateY(180deg) rotateZ(18deg);
+  }
+  100% {
+    transform: rotateX(22deg) rotateY(360deg) rotateZ(4deg);
+  }
+}
+
+@keyframes rotateCubeSecondary {
+  0% {
+    transform: rotateX(-25deg) rotateY(360deg) rotateZ(-12deg);
+  }
+  100% {
+    transform: rotateX(-25deg) rotateY(0deg) rotateZ(-12deg);
+  }
+}
+
+@keyframes floatGrid {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-cube-main {
+  animation: rotateCubeMain 18s linear infinite;
+  transform-style: preserve-3d;
+}
+
+.animate-cube-secondary {
+  animation: rotateCubeSecondary 14s linear infinite;
+  transform-style: preserve-3d;
+}
+
+.animate-float-grid {
+  animation: floatGrid 6s ease-in-out infinite;
+}
+
+/* Subtle Heading Cube Slow Multi-Axis Rotation */
+@keyframes rotateCubeHeading {
+  0% {
+    transform: rotateX(24deg) rotateY(0deg) rotateZ(6deg);
+  }
+  50% {
+    transform: rotateX(48deg) rotateY(180deg) rotateZ(16deg);
+  }
+  100% {
+    transform: rotateX(24deg) rotateY(360deg) rotateZ(6deg);
+  }
+}
+
+.animate-cube-heading {
+  animation: rotateCubeHeading 20s linear infinite;
+  transform-style: preserve-3d;
+}
+
+/* Respect user's motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .animate-cube-heading,
+  .animate-cube-main,
+  .animate-cube-secondary,
+  .animate-float-grid {
+    animation: none !important;
+    transform: rotateX(24deg) rotateY(35deg) rotateZ(10deg) !important;
+  }
+}
+
+
