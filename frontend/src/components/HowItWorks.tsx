@@ -39,7 +39,7 @@ const steps: ProcessStep[] = [
 
 export const HowItWorks: React.FC = () => {
   return (
-    <section className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+    <section id="how-it-works" className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 scroll-mt-6">
       {/* Section Header with rotating 3D cube with grid directly in front of the topic */}
       <div className="mb-6 sm:mb-8 flex flex-col items-start">
         <div className="flex items-center gap-2 mb-2">

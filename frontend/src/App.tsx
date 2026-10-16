@@ -3,7 +3,7 @@ import { AppRoute } from './types';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
 import { HowItWorks } from './components/HowItWorks';
-import { WhyReQNet } from './components/WhySternkraft';
+import { EverySecondMatters } from './components/EverySecondMatters';
 import { EmergencyInstructions } from './components/EmergencyInstructions';
 import { Footer } from './components/Footer';
 import { PlaceholderPage } from './components/PlaceholderPage';
@@ -171,8 +171,8 @@ export const App: React.FC = () => {
               {/* 2. Smoothly blended "From SOS to Rescue" section */}
               <HowItWorks />
 
-              {/* 3. "Designed for Disaster Connectivity" benefits */}
-              <WhyReQNet />
+              {/* 3. Sequential Cinematic Storytelling: Every Second Matters */}
+              <EverySecondMatters onNavigate={handleNavigate} />
 
               {/* 4. "Quick Emergency Instructions" */}
               <EmergencyInstructions />
