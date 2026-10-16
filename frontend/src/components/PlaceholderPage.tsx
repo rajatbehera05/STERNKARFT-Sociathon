@@ -47,8 +47,8 @@ export const PlaceholderPage: React.FC<PlaceholderPageProps> = ({
 
         <p className="mt-3 text-sm text-slate-600 leading-relaxed max-w-md mx-auto">
           {isSos
-            ? 'The mobile-optimized emergency report form (with optional location, headcount, and rapid triage tags) will be implemented in the next phase per the STERNKRAFT PRD.'
-            : 'The real-time incident queue, triage priority matrix, and operational lifecycle controls (NEW → ACKNOWLEDGED → RESPONDING → RESOLVED) will be implemented in the next phase per the STERNKRAFT PRD.'}
+            ? 'The mobile-optimized emergency report form (with optional location, headcount, and rapid triage tags) will be implemented in the next phase per the ReQNet PRD.'
+            : 'The real-time incident queue, triage priority matrix, and operational lifecycle controls (NEW → ACKNOWLEDGED → RESPONDING → RESOLVED) will be implemented in the next phase per the ReQNet PRD.'}
         </p>
 
         <div className="mt-8 flex justify-center">

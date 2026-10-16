@@ -57,7 +57,7 @@ export const RescueNavbar: React.FC<RescueNavbarProps> = ({
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm font-extrabold tracking-wider uppercase text-white leading-none">
-                    STERNKRAFT
+                    ReQNet
                   </span>
                   <span className="text-[10px] font-mono text-red-400 font-bold bg-red-950/80 px-1.5 py-0.5 rounded border border-red-800/80">
                     RESCUE OPS
@@ -115,7 +115,7 @@ export const RescueNavbar: React.FC<RescueNavbarProps> = ({
             {isBackendHealthy ? (
               <div 
                 className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-950/80 border border-emerald-700/80 text-[11px] font-mono text-emerald-300"
-                title={`Gateway Mode: ${health?.mode || 'OFFLINE_LOCAL'} (${health?.service || 'sternkraft-backend'})`}
+                title={`Gateway Mode: ${health?.mode || 'OFFLINE_LOCAL'} (${health?.service || 'reqnet-backend'})`}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 <span>LOCAL GATEWAY: ACTIVE</span>

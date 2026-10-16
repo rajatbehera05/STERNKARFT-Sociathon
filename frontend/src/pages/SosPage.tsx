@@ -106,7 +106,7 @@ export const SosPage: React.FC<SosPageProps> = ({ onNavigate }) => {
       setSubmittedResult(result);
     } catch (err: any) {
       console.error('SOS submission failed:', err);
-      setError(err.message || 'Transmission failed. Ensure connection to STERNKRAFT gateway.');
+      setError(err.message || 'Transmission failed. Ensure connection to ReQNet gateway.');
     } finally {
       setIsSubmitting(false);
     }

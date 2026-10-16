@@ -91,7 +91,7 @@ export const PlatformDashboardPage: React.FC<PlatformDashboardProps> = ({ onNavi
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-extrabold tracking-wider uppercase text-white leading-none">
-                      STERNKRAFT
+                      ReQNet
                     </span>
                     <span className="text-[10px] font-mono text-slate-400 font-semibold bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700">
                       Platform
@@ -164,7 +164,7 @@ export const PlatformDashboardPage: React.FC<PlatformDashboardProps> = ({ onNavi
             <div>
               {/* Breadcrumb */}
               <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium mb-1">
-                <span>STERNKRAFT</span>
+                <span>ReQNet</span>
                 <span className="text-slate-300">/</span>
                 <span className="text-sky-700 font-semibold">Operations Launchpad</span>
               </div>
@@ -419,7 +419,7 @@ export const PlatformDashboardPage: React.FC<PlatformDashboardProps> = ({ onNavi
                     Modular Emergency Architecture
                   </h4>
                   <p className="text-xs text-slate-600 mt-0.5">
-                    STERNKRAFT decouples civilian reporting from operations. Modules operate independently on local hardware to guarantee survival during telecom blackout.
+                    ReQNet decouples civilian reporting from operations. Modules operate independently on local hardware to guarantee survival during telecom blackout.
                   </p>
                 </div>
               </div>
@@ -457,7 +457,7 @@ export const PlatformDashboardPage: React.FC<PlatformDashboardProps> = ({ onNavi
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-slate-900 leading-none">
-                      Flood Monitoring Module
+                       Flood Monitoring Module
                     </h3>
                     <span className="text-[10px] font-mono text-amber-800 font-semibold bg-amber-100 px-1.5 py-0.2 rounded border border-amber-300 mt-1 inline-block">
                       STATUS: COMING SOON
@@ -481,7 +481,7 @@ export const PlatformDashboardPage: React.FC<PlatformDashboardProps> = ({ onNavi
                     System Architecture Notice
                   </p>
                   <p className="text-[11px] leading-relaxed">
-                    This module is scheduled for Phase 2 implementation. In accordance with STERNKRAFT's strict truthful operational reporting policy, synthetic telemetry or simulated river water-level gauges are not displayed as active measurements.
+                    This module is scheduled for Phase 2 implementation. In accordance with ReQNet's strict truthful operational reporting policy, synthetic telemetry or simulated river water-level gauges are not displayed as active measurements.
                   </p>
                 </div>
 

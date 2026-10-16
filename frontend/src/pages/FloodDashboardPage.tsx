@@ -49,7 +49,7 @@ export const FloodDashboardPage: React.FC<FloodDashboardPageProps> = ({ onNaviga
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-extrabold tracking-wider uppercase text-white leading-none">
-                      STERNKRAFT
+                      ReQNet
                     </span>
                     <span className="text-[10px] font-mono text-amber-400 font-bold bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-800/80">
                       FLOOD MONITORING
@@ -110,7 +110,7 @@ export const FloodDashboardPage: React.FC<FloodDashboardPageProps> = ({ onNaviga
                     </span>
                   </div>
                   <p className="text-xs text-amber-900/90 mt-1 max-w-3xl leading-relaxed">
-                    Per STERNKRAFT truthful reporting protocols, live environmental water measurements are not claimed without active river gauge hardware. This module entry establishes the complete data schemas, 4-tier warning thresholds, and liquid-free bench calibration protocols ready for upcoming sensor integration.
+                    Per ReQNet truthful reporting protocols, live environmental water measurements are not claimed without active river gauge hardware. This module entry establishes the complete data schemas, 4-tier warning thresholds, and liquid-free bench calibration protocols ready for upcoming sensor integration.
                   </p>
                 </div>
               </div>

@@ -49,9 +49,9 @@ export const HowItWorks: React.FC = () => {
           </p>
         </div>
 
-        {/* Heading with 3D Rotating Cube with Grid directly IN FRONT OF "From SOS to Rescue" */}
+        {/* Heading with 3D Rotating Wireframe Cube directly IN FRONT OF "From SOS to Rescue" */}
         <div className="flex items-center gap-3 sm:gap-3.5">
-          <HeadingCubeGrid accent="red" size={34} />
+          <HeadingCubeGrid accent="pink" size={38} />
           <h2 className="text-xl sm:text-2xl font-extrabold text-[#0f172a] tracking-tight">
             From SOS to Rescue
           </h2>

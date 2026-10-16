@@ -46,7 +46,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           onClick={() => onNavigate('/')}
           className="flex items-center gap-2.5 sm:gap-3 group text-left focus:outline-none cursor-pointer select-none shrink-0"
-          aria-label="STERNKRAFT Home"
+          aria-label="ReQNet Home"
         >
           {/* Logo Emblem: Stylized geometric origami A/S chevron */}
           <div className="relative w-8 h-8 sm:w-9 sm:h-9 shrink-0">
@@ -77,7 +77,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <div className="flex flex-col justify-center">
             <span className="text-base sm:text-lg font-extrabold tracking-[0.06em] text-slate-900 uppercase leading-none">
-              STERNKRAFT
+              ReQNet
             </span>
             <span className="text-[9px] sm:text-[9.5px] font-bold tracking-[0.24em] text-slate-500 uppercase mt-1 leading-none">
               EMERGENCY COMMUNICATION

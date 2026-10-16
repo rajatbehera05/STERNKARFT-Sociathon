@@ -149,7 +149,7 @@ export const DeviceStatusPage: React.FC<DeviceStatusPageProps> = ({ onNavigate }
             <div className="space-y-2 pt-3 border-t border-[#DCE6F1] text-[13px] font-mono">
               <div className="flex justify-between py-1">
                 <span className="text-[#5D6F89]">SSID Broadcast:</span>
-                <span className="font-semibold text-[#17243A]">STERNKRAFT-RESCUE-AP</span>
+                <span className="font-semibold text-[#17243A]">ReQNet-RESCUE-AP</span>
               </div>
               <div className="flex justify-between py-1 border-t border-[#F3F7FC]">
                 <span className="text-[#5D6F89]">Ingress Protocol:</span>
@@ -213,7 +213,7 @@ export const DeviceStatusPage: React.FC<DeviceStatusPageProps> = ({ onNavigate }
               </div>
               <div className="flex justify-between py-1 border-t border-[#F3F7FC]">
                 <span className="text-[#5D6F89]">Service Identifier:</span>
-                <span className="font-semibold text-[#17243A]">{health?.service || 'sternkraft-backend'}</span>
+                <span className="font-semibold text-[#17243A]">{health?.service || 'reqnet-backend'}</span>
               </div>
             </div>
           </div>

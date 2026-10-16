@@ -113,14 +113,33 @@
   transform-style: preserve-3d;
 }
 
+/* 3D Wireframe Lattice Cube Rotation matching user reference */
+@keyframes rotateWireframeCube {
+  0% {
+    transform: rotateX(-22deg) rotateY(0deg) rotateZ(3deg);
+  }
+  50% {
+    transform: rotateX(-32deg) rotateY(180deg) rotateZ(-4deg);
+  }
+  100% {
+    transform: rotateX(-22deg) rotateY(360deg) rotateZ(3deg);
+  }
+}
+
+.animate-wireframe-cube {
+  animation: rotateWireframeCube 16s linear infinite;
+  transform-style: preserve-3d;
+}
+
 /* Respect user's motion preference */
 @media (prefers-reduced-motion: reduce) {
   .animate-cube-heading,
   .animate-cube-main,
   .animate-cube-secondary,
-  .animate-float-grid {
+  .animate-float-grid,
+  .animate-wireframe-cube {
     animation: none !important;
-    transform: rotateX(24deg) rotateY(35deg) rotateZ(10deg) !important;
+    transform: rotateX(-24deg) rotateY(35deg) rotateZ(4deg) !important;
   }
 }
 

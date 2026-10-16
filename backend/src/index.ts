@@ -104,7 +104,7 @@ app.use(express.json());
 app.get('/api/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'ok',
-    service: 'sternkraft-backend',
+    service: 'reqnet-backend',
     mode: 'OFFLINE_LOCAL',
     gateway_connected: true,
     timestamp: new Date().toISOString(),
@@ -288,6 +288,6 @@ app.get('/api/events', (_req: Request, res: Response) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[STERNKRAFT Backend] Server listening on http://localhost:${PORT}`);
-  console.log(`[STERNKRAFT Backend] Incidents file: ${INCIDENTS_FILE}`);
+  console.log(`[ReQNet Backend] Server listening on http://localhost:${PORT}`);
+  console.log(`[ReQNet Backend] Incidents file: ${INCIDENTS_FILE}`);
 });

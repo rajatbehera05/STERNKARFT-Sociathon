@@ -127,7 +127,7 @@ export const RescueLayout: React.FC<RescueLayoutProps> = ({
             </div>
             <div className="flex flex-col text-left">
               <span className="font-extrabold text-[15px] tracking-wider uppercase text-white leading-none">
-                STERNKRAFT
+                ReQNet
               </span>
               <span className="text-[11px] text-[#A0B3CC] font-medium leading-tight">
                 Rescue Comms
@@ -163,7 +163,7 @@ export const RescueLayout: React.FC<RescueLayoutProps> = ({
             </div>
             <div className="flex flex-col">
               <span className="text-[17px] font-black tracking-wider uppercase text-white leading-none">
-                STERNKRAFT
+                ReQNet
               </span>
               <span className="text-[12px] font-semibold text-[#1685D1] mt-1 tracking-wide">
                 Rescue Communication

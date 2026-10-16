@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MapContainer,
@@ -69,11 +69,16 @@ const createRescueMarkerIcon = (priority: PriorityTier, isSelected: boolean) => 
   });
 };
 
-// Map controller for bounds fitting, fly-to actions, and tile error monitoring
+// Default map center: Nagpur, Maharashtra, India (PRD & Operator Command Post)
+export const NAGPUR_CENTER: [number, number] = [21.1458, 79.0882];
+export const DEFAULT_CITY_ZOOM = 12;
+
+// Map controller for bounds fitting, Nagpur recentering, fly-to actions, and tile error monitoring
 interface MapControllerProps {
   selectedIncident: Incident | null;
   mappedIncidents: Incident[];
   fitTrigger: number;
+  centerNagpurTrigger: number;
   onTileError: () => void;
   onZoomChange: (zoom: number) => void;
 }
@@ -82,11 +87,11 @@ const MapController: React.FC<MapControllerProps> = ({
   selectedIncident,
   mappedIncidents,
   fitTrigger,
+  centerNagpurTrigger,
   onTileError,
   onZoomChange,
 }) => {
   const map = useMap();
-  const initialFitDone = useRef(false);
 
   // Monitor tile loading errors & zoom level
   useEffect(() => {
@@ -107,9 +112,9 @@ const MapController: React.FC<MapControllerProps> = ({
     };
   }, [map, onTileError, onZoomChange]);
 
-  // Fit bounds when fitTrigger changes or on initial mount with markers
+  // Fit bounds to all valid GPS markers when fitTrigger is invoked
   useEffect(() => {
-    if (mappedIncidents.length === 0) return;
+    if (fitTrigger === 0 || mappedIncidents.length === 0) return;
 
     const bounds = L.latLngBounds(
       mappedIncidents.map((i) => [
@@ -124,9 +129,16 @@ const MapController: React.FC<MapControllerProps> = ({
         maxZoom: 15,
         animate: true,
       });
-      initialFitDone.current = true;
     }
   }, [map, fitTrigger, mappedIncidents]);
+
+  // Recenter to Nagpur command post when trigger is activated
+  useEffect(() => {
+    if (centerNagpurTrigger === 0) return;
+    map.flyTo(NAGPUR_CENTER, DEFAULT_CITY_ZOOM, {
+      duration: 1.0,
+    });
+  }, [map, centerNagpurTrigger]);
 
   // Pan / fly to selected incident when selection changes
   useEffect(() => {
@@ -154,8 +166,9 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'mapped' | 'manual'>('all');
 
   // Map state
-  const [zoomLevel, setZoomLevel] = useState(13);
+  const [zoomLevel, setZoomLevel] = useState(DEFAULT_CITY_ZOOM);
   const [fitTrigger, setFitTrigger] = useState(0);
+  const [centerNagpurTrigger, setCenterNagpurTrigger] = useState(0);
 
   // Fetch real incidents from backend
   const fetchIncidents = async () => {
@@ -218,15 +231,8 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
     );
   }, [incidents]);
 
-  // Center coordinate determination (fallback: central Bangalore / disaster zone coordinates)
-  const defaultCenter: [number, number] = useMemo(() => {
-    if (mappedIncidents.length > 0) {
-      const sumLat = mappedIncidents.reduce((acc, i) => acc + (i.location_geo?.latitude || 0), 0);
-      const sumLon = mappedIncidents.reduce((acc, i) => acc + (i.location_geo?.longitude || 0), 0);
-      return [sumLat / mappedIncidents.length, sumLon / mappedIncidents.length];
-    }
-    return [12.9716, 77.5946];
-  }, [mappedIncidents]);
+  // Center coordinate: Default to Nagpur, Maharashtra, India (latitude 21.1458, longitude 79.0882)
+  const defaultCenter: [number, number] = NAGPUR_CENTER;
 
   // Filtered list for the side panel
   const filteredIncidents = useMemo(() => {
@@ -294,27 +300,36 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
               </span>
             </div>
             <p className="text-[13px] text-[#5D6F89] mt-0.5">
-              Interactive Leaflet GIS mapping GPS distress beacons and dispatch locations in real time.
+              Default Center: Nagpur, Maharashtra (21.1458° N, 79.0882° E) • Real OpenStreetMap tiles and GPS beacon telemetry.
             </p>
           </div>
         </div>
 
-        {/* Telemetry Stats & Counter */}
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Telemetry Stats & Action Controls */}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
           <div className="flex items-center gap-2 text-[12px] font-mono text-[#5D6F89] bg-[#F3F7FC] px-3 py-1.5 rounded-lg border border-[#DCE6F1]">
             <span>GPS Plotted: <strong className="text-[#0B9B73]">{mappedIncidents.length}</strong></span>
             <span className="text-[#DCE6F1]">•</span>
-            <span>Landmarks Only: <strong className="text-[#D98A00]">{manualOnlyIncidents.length}</strong></span>
+            <span>Landmarks: <strong className="text-[#D98A00]">{manualOnlyIncidents.length}</strong></span>
           </div>
+
+          <button
+            onClick={() => setCenterNagpurTrigger((prev) => prev + 1)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-[#F3F7FC] text-[#17243A] font-semibold text-[13px] border border-[#DCE6F1] shadow-xs transition-colors cursor-pointer"
+            title="Recenter view on Nagpur, Maharashtra, India"
+          >
+            <Compass className="w-3.5 h-3.5 text-[#1685D1]" />
+            <span>Nagpur Center</span>
+          </button>
 
           <button
             onClick={() => setFitTrigger((prev) => prev + 1)}
             disabled={mappedIncidents.length === 0}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-[#F3F7FC] text-[#17243A] font-semibold text-[13px] border border-[#DCE6F1] shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-            title="Adjust viewport to enclose all active GPS incident markers"
+            title="Adjust viewport to fit all valid GPS incident markers"
           >
             <Crosshair className="w-3.5 h-3.5 text-[#1685D1]" />
-            <span>Fit Incidents</span>
+            <span>Fit All Markers</span>
           </button>
         </div>
       </div>
@@ -331,12 +346,15 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
             <div className="flex items-center gap-2.5">
               <WifiOff className="w-4 h-4 text-[#D98A00] shrink-0" />
               <span>
-                <strong>Map tiles currently unavailable (Disaster Connectivity Blackout).</strong> Coordinate pins, local incident telemetry, and landmark navigation remain fully functional.
+                <strong>Map tiles currently unavailable (Disaster Connectivity Blackout / Offline).</strong> Locally stored incidents, coordinates, and directory navigation remain 100% usable.
               </span>
             </div>
-            <span className="text-[11px] font-mono font-semibold bg-white/80 px-2 py-0.5 rounded border border-[#FDE8BF]">
-              OFFLINE CACHE ACTIVE
-            </span>
+            <button
+              onClick={() => setTilesUnavailable(false)}
+              className="text-[11px] font-mono font-semibold bg-white/90 hover:bg-white text-[#D98A00] px-2.5 py-1 rounded border border-[#FDE8BF] cursor-pointer transition-colors shrink-0"
+            >
+              RETRY TILES
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -349,7 +367,7 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
           <div className="relative w-full h-full z-10">
             <MapContainer
               center={defaultCenter}
-              zoom={zoomLevel}
+              zoom={DEFAULT_CITY_ZOOM}
               scrollWheelZoom={true}
               className="w-full h-full"
             >
@@ -363,6 +381,7 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
                 selectedIncident={selectedIncident}
                 mappedIncidents={mappedIncidents}
                 fitTrigger={fitTrigger}
+                centerNagpurTrigger={centerNagpurTrigger}
                 onTileError={() => setTilesUnavailable(true)}
                 onZoomChange={(z) => setZoomLevel(z)}
               />
@@ -442,10 +461,33 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
             {/* Map Overlay: Top-Left Tactical Coordinates Widget */}
             <div className="absolute top-3 left-3 z-[400] flex items-center gap-2 bg-white/95 backdrop-blur-xs border border-[#DCE6F1] rounded-lg px-3 py-1.5 shadow-sm text-[12px] font-mono text-[#17243A]">
               <Compass className="w-3.5 h-3.5 text-[#1685D1]" />
-              <span>MAP ZOOM: {zoomLevel}x</span>
+              <span>Nagpur, MH (21.1458, 79.0882)</span>
               <span className="text-[#DCE6F1]">|</span>
-              <span className="text-[#5D6F89]">{mappedIncidents.length} Pinned</span>
+              <span>Zoom: {zoomLevel}x</span>
+              <span className="text-[#DCE6F1]">|</span>
+              <span className="text-[#0B9B73] font-semibold">{mappedIncidents.length} GPS Mapped</span>
             </div>
+
+            {/* Map In-Canvas Tile Unavailable Overlay */}
+            {tilesUnavailable && (
+              <div className="absolute top-14 left-3 right-3 z-[400] bg-white/95 backdrop-blur-sm border border-[#FDE8BF] rounded-xl p-3 shadow-md flex items-center justify-between text-[13px] text-[#D98A00]">
+                <div className="flex items-center gap-2.5">
+                  <WifiOff className="w-4 h-4 text-[#D98A00] shrink-0" />
+                  <div>
+                    <span className="font-semibold text-[#17243A]">Internet Map Tiles Unavailable</span>
+                    <span className="block text-[12px] text-[#5D6F89]">
+                      Tile server unreachable (Offline / Blackout). Stored incidents, coordinates, and local directory remain fully operational.
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setTilesUnavailable(false)}
+                  className="px-2.5 py-1 text-[11px] font-mono font-semibold bg-[#FEF8ED] text-[#D98A00] rounded border border-[#FDE8BF] hover:bg-[#FDE8BF] cursor-pointer shrink-0"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
 
             {/* Map Overlay: Bottom-Left Priority Legend */}
             <div className="absolute bottom-3 left-3 z-[400] flex flex-wrap items-center gap-3 bg-white/95 backdrop-blur-xs border border-[#DCE6F1] rounded-lg px-3 py-2 shadow-sm text-[11px] font-semibold text-[#17243A]">

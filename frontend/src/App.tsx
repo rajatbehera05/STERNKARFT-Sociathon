@@ -3,7 +3,7 @@ import { AppRoute } from './types';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
 import { HowItWorks } from './components/HowItWorks';
-import { WhySternkraft } from './components/WhySternkraft';
+import { WhyReQNet } from './components/WhySternkraft';
 import { EmergencyInstructions } from './components/EmergencyInstructions';
 import { Footer } from './components/Footer';
 import { PlaceholderPage } from './components/PlaceholderPage';
@@ -172,7 +172,7 @@ export const App: React.FC = () => {
               <HowItWorks />
 
               {/* 3. "Designed for Disaster Connectivity" benefits */}
-              <WhySternkraft />
+              <WhyReQNet />
 
               {/* 4. "Quick Emergency Instructions" */}
               <EmergencyInstructions />

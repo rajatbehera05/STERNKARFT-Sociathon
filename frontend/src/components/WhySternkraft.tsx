@@ -36,7 +36,7 @@ const benefits: BenefitItem[] = [
   },
 ];
 
-export const WhySternkraft: React.FC = () => {
+export const WhyReQNet: React.FC = () => {
   return (
     <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
       {/* Section Header */}
@@ -100,3 +100,5 @@ export const WhySternkraft: React.FC = () => {
     </section>
   );
 };
+
+export const WhySternkraft = WhyReQNet;
