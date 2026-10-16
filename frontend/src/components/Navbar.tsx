@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Home, Radio, LayoutDashboard } from 'lucide-react';
 import { AppRoute } from '../types';
 
 interface NavbarProps {
@@ -85,52 +86,58 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </button>
 
-        {/* Right Area: Navigation Links & Optional Verified Status */}
-        <div className="flex items-center gap-4 sm:gap-7">
-          {/* Subtle truthful gateway indicator: ONLY rendered if real gateway connection verified */}
+        {/* Right Area: Verified Gateway Status & Rectangular Button Section */}
+        <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
+          {/* Subtle truthful gateway indicator */}
           {isGatewayActive && (
-            <div className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-semibold border border-emerald-200/90 shadow-2xs">
+            <div className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] font-semibold border border-emerald-200/90 shadow-2xs">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>Gateway Active</span>
             </div>
           )}
 
-          {/* Navigation Links with refined red active indicator */}
-          <div className="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm font-semibold text-slate-600">
+          {/* Rectangular Navigation Button Container */}
+          <div className="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-xl p-1 sm:p-1.5 shadow-[0_1px_3px_0_rgba(15,23,42,0.06)] flex items-center gap-1 sm:gap-1.5">
+            {/* Home Button */}
             <button
               onClick={() => onNavigate('/')}
-              className={`relative py-1 transition-colors hover:text-slate-900 cursor-pointer ${
-                currentRoute === '/' ? 'text-slate-900 font-bold' : ''
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                currentRoute === '/'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
               }`}
+              title="Return to Landing Page"
             >
-              Home
-              {currentRoute === '/' && (
-                <span className="absolute bottom-[-3px] left-1/2 -translate-x-1/2 w-5 sm:w-6 h-[2px] bg-red-600 rounded-full" />
-              )}
+              <Home className="w-3.5 h-3.5" />
+              <span>Home</span>
             </button>
 
+            {/* SOS Button */}
             <button
               onClick={() => onNavigate('/sos')}
-              className={`relative py-1 transition-colors hover:text-slate-900 cursor-pointer ${
-                currentRoute === '/sos' ? 'text-slate-900 font-bold' : ''
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                currentRoute === '/sos'
+                  ? 'bg-red-600 text-white shadow-xs animate-pulse'
+                  : 'text-red-600 bg-red-50 hover:bg-red-100/80 border border-red-200/80 shadow-2xs'
               }`}
+              title="Report Civilian Emergency SOS"
             >
-              SOS
-              {currentRoute === '/sos' && (
-                <span className="absolute bottom-[-3px] left-1/2 -translate-x-1/2 w-5 sm:w-6 h-[2px] bg-red-600 rounded-full" />
-              )}
+              <Radio className="w-3.5 h-3.5" />
+              <span>SOS</span>
             </button>
 
+            {/* Dashboard Button */}
             <button
               onClick={() => onNavigate('/dashboard')}
-              className={`relative py-1 transition-colors hover:text-slate-900 cursor-pointer ${
-                currentRoute === '/dashboard' ? 'text-slate-900 font-bold' : ''
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                currentRoute === '/dashboard' || currentRoute.startsWith('/rescue')
+                  ? 'bg-[#1685D1] text-white shadow-xs'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100/80'
               }`}
+              title="Open Platform Operations Dashboard"
             >
-              Dashboard
-              {currentRoute === '/dashboard' && (
-                <span className="absolute bottom-[-3px] left-1/2 -translate-x-1/2 w-5 sm:w-6 h-[2px] bg-red-600 rounded-full" />
-              )}
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>Dashboard</span>
             </button>
           </div>
         </div>
