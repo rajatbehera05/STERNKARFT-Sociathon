@@ -176,8 +176,8 @@ export const CommunicationsPage: React.FC<CommunicationsPageProps> = ({ onNaviga
       </div>
 
       {/* Audit Log Stream */}
-      <div className="bg-white rounded-xl border border-[#DCE6F1] shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-[#DCE6F1] flex items-center justify-between bg-[#F8FAFC]">
+      <div className="bg-white rounded-xl border border-[#DCE6F1] shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] overflow-hidden min-w-0">
+        <div className="p-4 sm:p-5 border-b border-[#DCE6F1] flex flex-wrap items-center justify-between gap-3 bg-[#F8FAFC]">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-[#1685D1]" />
             <h2 className="text-[16px] font-bold text-[#17243A] tracking-tight">
@@ -210,7 +210,7 @@ export const CommunicationsPage: React.FC<CommunicationsPageProps> = ({ onNaviga
               return (
                 <div
                   key={evt.id}
-                  className="p-4 sm:p-5 hover:bg-[#F3F7FC]/70 transition-colors flex flex-col gap-2"
+                  className="p-4 sm:p-5 hover:bg-[#F3F7FC]/70 transition-colors flex flex-col gap-2 min-w-0"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -262,7 +262,7 @@ export const CommunicationsPage: React.FC<CommunicationsPageProps> = ({ onNaviga
                   </div>
 
                   {/* Event Details Content */}
-                  <p className="text-[14px] text-[#17243A] font-medium leading-relaxed">
+                  <p className="text-[14px] text-[#17243A] font-medium leading-relaxed break-words">
                     {evt.details}
                   </p>
 

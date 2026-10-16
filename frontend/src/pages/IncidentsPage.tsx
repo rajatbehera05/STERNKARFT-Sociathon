@@ -12,10 +12,12 @@ import {
   CheckCheck,
   Eye,
   SlidersHorizontal,
+  Route,
 } from 'lucide-react';
 import {
   Incident,
   IncidentStatus,
+  AppRoute,
 } from '../types';
 import { api } from '../services/api';
 import {
@@ -25,7 +27,11 @@ import {
 } from '../components/StatusBadges';
 import { IncidentDetailModal } from '../components/IncidentDetailModal';
 
-export const IncidentsPage: React.FC = () => {
+interface IncidentsPageProps {
+  onNavigate?: (route: AppRoute) => void;
+}
+
+export const IncidentsPage: React.FC<IncidentsPageProps> = ({ onNavigate }) => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
@@ -255,31 +261,22 @@ export const IncidentsPage: React.FC = () => {
           )}
         </div>
 
-        {/* Incidents Table - Fixed controlled column sizing with zero overlap */}
-        <div className="bg-white rounded-xl border border-[#DCE6F1] shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1140px] text-left border-collapse table-fixed">
-              <colgroup>
-                <col className="w-[140px]" />
-                <col className="w-[140px]" />
-                <col className="w-[230px]" />
-                <col className="w-[250px]" />
-                <col className="w-[130px]" />
-                <col className="w-[130px]" />
-                <col className="w-[120px]" />
-              </colgroup>
+        {/* Incidents Table - Fluid responsive column sizing with natural text wrapping */}
+        <div className="bg-white rounded-xl border border-[#DCE6F1] shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] overflow-hidden min-w-0">
+          <div className="overflow-x-auto min-w-0">
+            <table className="w-full text-left border-collapse text-[13px] sm:text-[14px]">
               <thead>
                 <tr className="bg-[#F8FAFC] border-b border-[#DCE6F1] text-[12px] font-semibold uppercase tracking-wider text-[#5D6F89]">
-                  <th className="py-3.5 px-4">Incident ID & Time</th>
-                  <th className="py-3.5 px-4">Priority / Type</th>
-                  <th className="py-3.5 px-4">Reported Location</th>
-                  <th className="py-3.5 px-4">People & Situation</th>
-                  <th className="py-3.5 px-4">Lifecycle Status</th>
-                  <th className="py-3.5 px-4">Delivery State</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
+                  <th className="py-3.5 px-3 sm:px-4 whitespace-nowrap">Incident ID & Time</th>
+                  <th className="py-3.5 px-3 sm:px-4 whitespace-nowrap">Priority / Type</th>
+                  <th className="py-3.5 px-3 sm:px-4 min-w-[160px]">Reported Location</th>
+                  <th className="py-3.5 px-3 sm:px-4 min-w-[180px]">People & Situation</th>
+                  <th className="py-3.5 px-3 sm:px-4 whitespace-nowrap">Lifecycle Status</th>
+                  <th className="py-3.5 px-3 sm:px-4 whitespace-nowrap">Delivery State</th>
+                  <th className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#DCE6F1] text-[14px]">
+              <tbody className="divide-y divide-[#DCE6F1]">
                 {filteredIncidents.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-[#5D6F89]">
@@ -324,11 +321,11 @@ export const IncidentsPage: React.FC = () => {
                         </td>
 
                         {/* Location */}
-                        <td className="py-3.5 px-4 align-top">
+                        <td className="py-3.5 px-3 sm:px-4 align-top">
                           <div className="flex items-start gap-1.5">
                             <MapPin className="w-4 h-4 text-[#5D6F89] shrink-0 mt-0.5" />
                             <div className="min-w-0">
-                              <span className="font-semibold text-[#17243A] block line-clamp-2 leading-snug">
+                              <span className="font-semibold text-[#17243A] block break-words leading-snug">
                                 {incident.location_manual || 'Location unspecified'}
                               </span>
                               {incident.location_geo && incident.location_geo.latitude !== null && incident.location_geo.longitude !== null ? (
@@ -345,7 +342,7 @@ export const IncidentsPage: React.FC = () => {
                         </td>
 
                         {/* People & Situation */}
-                        <td className="py-3.5 px-4 align-top">
+                        <td className="py-3.5 px-3 sm:px-4 align-top">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="inline-flex items-center gap-1 font-semibold text-[#17243A] bg-[#F3F7FC] border border-[#DCE6F1] px-2 py-0.5 rounded text-[12px]">
                               <Users className="w-3.5 h-3.5 text-[#5D6F89]" />
@@ -355,23 +352,23 @@ export const IncidentsPage: React.FC = () => {
                               {incident.sender_name || 'Anonymous'}
                             </span>
                           </div>
-                          <p className="text-[#5D6F89] line-clamp-2 text-[13px] leading-snug">
+                          <p className="text-[#5D6F89] text-[13px] leading-snug break-words">
                             {incident.description || 'No additional narrative provided.'}
                           </p>
                         </td>
 
                         {/* Status */}
-                        <td className="py-3.5 px-4 align-top">
+                        <td className="py-3.5 px-3 sm:px-4 align-top whitespace-nowrap">
                           <IncidentStatusBadge status={incident.status} />
                           {incident.operator_notes && (
-                            <span className="block text-[11px] text-[#5D6F89] italic mt-1 line-clamp-2">
+                            <span className="block text-[11px] text-[#5D6F89] italic mt-1 break-words max-w-[180px]">
                               "{incident.operator_notes}"
                             </span>
                           )}
                         </td>
 
                         {/* Delivery State */}
-                        <td className="py-3.5 px-4 align-top">
+                        <td className="py-3.5 px-3 sm:px-4 align-top whitespace-nowrap">
                           <DeliveryBadge state={incident.delivery_state} />
                           <span className="block text-[11px] text-[#5D6F89] mt-0.5">
                             Local NVMe
@@ -379,8 +376,23 @@ export const IncidentsPage: React.FC = () => {
                         </td>
 
                         {/* Operational Actions */}
-                        <td className="py-3.5 px-4 text-right align-top">
+                        <td className="py-3.5 px-3 sm:px-4 text-right align-top whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
+                            {/* View Rescue Path button if GPS present */}
+                            {incident.location_geo && incident.location_geo.latitude !== null && onNavigate && (
+                              <button
+                                onClick={() => {
+                                  sessionStorage.setItem('active_rescue_route_id', incident.id);
+                                  onNavigate('/rescue/map');
+                                }}
+                                className="px-2 py-1 rounded-lg border border-[#BFDBFE] text-[#1685D1] bg-[#EFF6FF] hover:bg-[#DBEAFE] text-[12px] font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
+                                title="Calculate and view rescue route on map"
+                              >
+                                <Route className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Route</span>
+                              </button>
+                            )}
+
                             {/* Inspect button */}
                             <button
                               onClick={() => setSelectedIncident(incident)}
@@ -456,6 +468,7 @@ export const IncidentsPage: React.FC = () => {
           incident={selectedIncident}
           onClose={() => setSelectedIncident(null)}
           onUpdateStatus={handleUpdateStatus}
+          onNavigate={onNavigate}
         />
       )}
     </motion.div>

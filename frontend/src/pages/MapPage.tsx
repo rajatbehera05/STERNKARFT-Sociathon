@@ -5,6 +5,7 @@ import {
   TileLayer,
   Marker,
   Popup,
+  Polyline,
   useMap,
 } from 'react-leaflet';
 import L from 'leaflet';
@@ -20,9 +21,20 @@ import {
   Layers,
   AlertCircle,
   Eye,
+  Route,
+  RotateCcw,
+  X,
+  ChevronDown,
 } from 'lucide-react';
 import { Incident, IncidentStatus, PriorityTier, AppRoute } from '../types';
 import { api } from '../services/api';
+import {
+  fetchRescueRoute,
+  getBrowserGeolocation,
+  RESCUE_BASE_COORDINATES,
+  RESCUE_BASE_LABEL,
+  RescueRoute,
+} from '../services/routingService';
 import { PriorityBadge, StatusBadge } from '../components/StatusBadges';
 import { IncidentDetailModal } from '../components/IncidentDetailModal';
 
@@ -31,7 +43,11 @@ interface MapPageProps {
 }
 
 // Custom vector marker icon generator with priority colors and selection state
-const createRescueMarkerIcon = (priority: PriorityTier, isSelected: boolean) => {
+const createRescueMarkerIcon = (
+  priority: PriorityTier,
+  isSelected: boolean,
+  isRoutedDestination: boolean
+) => {
   const color =
     priority === 'CRITICAL'
       ? '#E53945'
@@ -42,20 +58,22 @@ const createRescueMarkerIcon = (priority: PriorityTier, isSelected: boolean) => 
       : '#5D6F89';
 
   const isCritical = priority === 'CRITICAL';
-  const pulseRing = isCritical
+  const pulseRing = isRoutedDestination
+    ? `<span style="position:absolute; inset:-8px; border-radius:9999px; background-color:#1685D1; opacity:0.4; animation: ping 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>`
+    : isCritical
     ? `<span style="position:absolute; inset:-5px; border-radius:9999px; background-color:${color}; opacity:0.35; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>`
     : '';
 
-  const scale = isSelected ? 'scale(1.2)' : 'scale(1)';
-  const ringColor = isSelected ? '#17243A' : '#FFFFFF';
-  const ringWidth = isSelected ? '3px' : '2px';
+  const scale = isRoutedDestination ? 'scale(1.25)' : isSelected ? 'scale(1.15)' : 'scale(1)';
+  const ringColor = isRoutedDestination ? '#65C7FF' : isSelected ? '#17243A' : '#FFFFFF';
+  const ringWidth = isRoutedDestination ? '3.5px' : isSelected ? '3px' : '2px';
 
   return L.divIcon({
     className: 'custom-leaflet-marker',
     html: `
-      <div style="position:relative; width:34px; height:34px; display:flex; align-items:center; justify-content:center; transform:${scale}; transition:transform 0.15s ease-out;">
+      <div style="position:relative; width:36px; height:36px; display:flex; align-items:center; justify-content:center; transform:${scale}; transition:transform 0.15s ease-out;">
         ${pulseRing}
-        <div style="width:30px; height:30px; border-radius:50%; background-color:${color}; border:${ringWidth} solid ${ringColor}; box-shadow:0 3px 8px rgba(23,36,58,0.28); display:flex; align-items:center; justify-content:center; color:#ffffff;">
+        <div style="width:30px; height:30px; border-radius:50%; background-color:${color}; border:${ringWidth} solid ${ringColor}; box-shadow:0 3px 10px rgba(23,36,58,0.35); display:flex; align-items:center; justify-content:center; color:#ffffff;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
             <circle cx="12" cy="10" r="3"/>
@@ -63,9 +81,31 @@ const createRescueMarkerIcon = (priority: PriorityTier, isSelected: boolean) => 
         </div>
       </div>
     `,
-    iconSize: [34, 34],
-    iconAnchor: [17, 34],
+    iconSize: [36, 36],
+    iconAnchor: [18, 36],
     popupAnchor: [0, -32],
+  });
+};
+
+// Operator Origin vector marker generator
+const createOriginMarkerIcon = (isBase: boolean) => {
+  return L.divIcon({
+    className: 'custom-leaflet-marker',
+    html: `
+      <div style="position:relative; width:36px; height:36px; display:flex; align-items:center; justify-content:center;">
+        <span style="position:absolute; inset:-4px; border-radius:50%; background-color:#1685D1; opacity:0.35; animation:ping 2s cubic-bezier(0,0,0.2,1) infinite;"></span>
+        <div style="width:32px; height:32px; border-radius:50%; background-color:#17243A; border:3px solid #65C7FF; box-shadow:0 3px 10px rgba(23,36,58,0.4); display:flex; align-items:center; justify-content:center; color:#65C7FF;">
+          ${
+            isBase
+              ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>'
+              : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/></svg>'
+          }
+        </div>
+      </div>
+    `,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -20],
   });
 };
 
@@ -73,12 +113,14 @@ const createRescueMarkerIcon = (priority: PriorityTier, isSelected: boolean) => 
 export const NAGPUR_CENTER: [number, number] = [21.1458, 79.0882];
 export const DEFAULT_CITY_ZOOM = 12;
 
-// Map controller for bounds fitting, Nagpur recentering, fly-to actions, and tile error monitoring
+// Map controller for bounds fitting, Nagpur recentering, route framing, and resize monitoring
 interface MapControllerProps {
   selectedIncident: Incident | null;
   mappedIncidents: Incident[];
+  activeRescueRoute: RescueRoute | null;
   fitTrigger: number;
   centerNagpurTrigger: number;
+  fitRouteTrigger: number;
   onTileError: () => void;
   onZoomChange: (zoom: number) => void;
 }
@@ -86,8 +128,10 @@ interface MapControllerProps {
 const MapController: React.FC<MapControllerProps> = ({
   selectedIncident,
   mappedIncidents,
+  activeRescueRoute,
   fitTrigger,
   centerNagpurTrigger,
+  fitRouteTrigger,
   onTileError,
   onZoomChange,
 }) => {
@@ -106,9 +150,20 @@ const MapController: React.FC<MapControllerProps> = ({
     map.on('tileerror', handleTileError);
     map.on('zoomend', handleZoom);
 
+    // Invalidate map size on window/container resize
+    const handleResize = () => {
+      map.invalidateSize();
+    };
+    window.addEventListener('resize', handleResize);
+    const t1 = setTimeout(() => map.invalidateSize(), 150);
+    const t2 = setTimeout(() => map.invalidateSize(), 500);
+
     return () => {
       map.off('tileerror', handleTileError);
       map.off('zoomend', handleZoom);
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(t1);
+      clearTimeout(t2);
     };
   }, [map, onTileError, onZoomChange]);
 
@@ -140,8 +195,23 @@ const MapController: React.FC<MapControllerProps> = ({
     });
   }, [map, centerNagpurTrigger]);
 
-  // Pan / fly to selected incident when selection changes
+  // Fit bounds to active rescue route (origin, road path, destination)
   useEffect(() => {
+    if (!activeRescueRoute || activeRescueRoute.coordinates.length === 0) return;
+
+    const bounds = L.latLngBounds(activeRescueRoute.coordinates);
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, {
+        padding: [80, 80],
+        maxZoom: 16,
+        animate: true,
+      });
+    }
+  }, [map, activeRescueRoute, fitRouteTrigger]);
+
+  // Pan to selected incident when selection changes and no active route is being framed
+  useEffect(() => {
+    if (activeRescueRoute) return; // Keep route framing prioritized
     if (!selectedIncident?.location_geo) return;
     const { latitude, longitude } = selectedIncident.location_geo;
     if (latitude !== null && longitude !== null) {
@@ -149,7 +219,7 @@ const MapController: React.FC<MapControllerProps> = ({
         duration: 1.0,
       });
     }
-  }, [map, selectedIncident]);
+  }, [map, selectedIncident, activeRescueRoute]);
 
   return null;
 };
@@ -159,6 +229,14 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [backendError, setBackendError] = useState<string | null>(null);
   const [tilesUnavailable, setTilesUnavailable] = useState(false);
+
+  // Rescue Routing State
+  const [activeRescueRoute, setActiveRescueRoute] = useState<RescueRoute | null>(null);
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
+  const [originPreference, setOriginPreference] = useState<'AUTO' | 'BASE'>('AUTO');
+  const [routingErrorNotice, setRoutingErrorNotice] = useState<string | null>(null);
+  const [showRouteSteps, setShowRouteSteps] = useState(false);
+  const [fitRouteTrigger, setFitRouteTrigger] = useState(0);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -209,12 +287,100 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
     };
   }, [selectedIncident?.id]);
 
+  // Handle cross-page route navigation via session storage
+  useEffect(() => {
+    const pendingRouteId = sessionStorage.getItem('active_rescue_route_id');
+    if (pendingRouteId && incidents.length > 0) {
+      sessionStorage.removeItem('active_rescue_route_id');
+      const target = incidents.find((i) => i.id === pendingRouteId);
+      if (target) {
+        handleViewRescuePath(target);
+      }
+    }
+  }, [incidents]);
+
   const handleUpdateStatus = async (id: string, status: IncidentStatus, notes?: string) => {
     try {
       await api.updateIncidentStatus(id, status, notes);
       await fetchIncidents();
     } catch (err) {
       console.error('Failed to update status from map modal:', err);
+    }
+  };
+
+  // Calculate & display road rescue route to a particular incident
+  const handleViewRescuePath = async (incident: Incident, overrideOriginPref?: 'AUTO' | 'BASE') => {
+    const pref = overrideOriginPref || originPreference;
+
+    // Validate that destination has true GPS coordinates (Truth in Operations)
+    if (
+      !incident.location_geo ||
+      incident.location_geo.latitude === null ||
+      incident.location_geo.longitude === null
+    ) {
+      setRoutingErrorNotice(
+        `Incident ${incident.id} is a landmark-only report without verified GPS. Road dispatch requires numeric coordinates.`
+      );
+      setSelectedIncident(incident);
+      return;
+    }
+
+    setSelectedIncident(incident);
+    setIsCalculatingRoute(true);
+    setRoutingErrorNotice(null);
+
+    let origin: [number, number] = RESCUE_BASE_COORDINATES;
+    let originType: 'BROWSER_GPS' | 'RESCUE_BASE' = 'RESCUE_BASE';
+    let originLabel = RESCUE_BASE_LABEL;
+
+    if (pref === 'AUTO') {
+      try {
+        const browserCoords = await getBrowserGeolocation();
+        origin = browserCoords;
+        originType = 'BROWSER_GPS';
+        originLabel = 'Operator Browser GPS';
+      } catch (geoErr) {
+        console.warn('Browser GPS permission denied or unavailable, falling back to Rescue Base:', geoErr);
+        origin = RESCUE_BASE_COORDINATES;
+        originType = 'RESCUE_BASE';
+        originLabel = 'Nagpur Command Base (GPS unavailable)';
+      }
+    } else {
+      origin = RESCUE_BASE_COORDINATES;
+      originType = 'RESCUE_BASE';
+      originLabel = RESCUE_BASE_LABEL;
+    }
+
+    const destination: [number, number] = [
+      incident.location_geo.latitude,
+      incident.location_geo.longitude,
+    ];
+
+    const route = await fetchRescueRoute(
+      origin,
+      destination,
+      incident.id,
+      originType,
+      originLabel
+    );
+
+    setActiveRescueRoute(route);
+    setIsCalculatingRoute(false);
+    setFitRouteTrigger((prev) => prev + 1);
+  };
+
+  // Clear route and return to overall all-incidents map view
+  const handleClearRescueRoute = () => {
+    setActiveRescueRoute(null);
+    setRoutingErrorNotice(null);
+    setShowRouteSteps(false);
+  };
+
+  // Switch origin between Browser GPS and Nagpur Rescue Base
+  const handleSwitchOrigin = (newPref: 'AUTO' | 'BASE') => {
+    setOriginPreference(newPref);
+    if (selectedIncident) {
+      handleViewRescuePath(selectedIncident, newPref);
     }
   };
 
@@ -231,7 +397,7 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
     );
   }, [incidents]);
 
-  // Center coordinate: Default to Nagpur, Maharashtra, India (latitude 21.1458, longitude 79.0882)
+  // Center coordinate: Default to Nagpur, Maharashtra, India
   const defaultCenter: [number, number] = NAGPUR_CENTER;
 
   // Filtered list for the side panel
@@ -298,9 +464,15 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
               <span className="text-[11px] font-mono font-semibold bg-[#ECFDF5] text-[#0B9B73] px-2 py-0.5 rounded border border-[#A7F3D0]">
                 OpenStreetMap Real Tiles
               </span>
+              {activeRescueRoute && (
+                <span className="text-[11px] font-mono font-bold bg-[#EFF6FF] text-[#1685D1] px-2 py-0.5 rounded border border-[#BFDBFE] flex items-center gap-1">
+                  <Route className="w-3 h-3" />
+                  <span>Route Active ({activeRescueRoute.incidentId})</span>
+                </span>
+              )}
             </div>
             <p className="text-[13px] text-[#5D6F89] mt-0.5">
-              Default Center: Nagpur, Maharashtra (21.1458° N, 79.0882° E) • Real OpenStreetMap tiles and GPS beacon telemetry.
+              Default Center: Nagpur, Maharashtra (21.1458° N, 79.0882° E) • OpenStreetMap real tiles and road-following dispatch routing.
             </p>
           </div>
         </div>
@@ -313,6 +485,27 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
             <span>Landmarks: <strong className="text-[#D98A00]">{manualOnlyIncidents.length}</strong></span>
           </div>
 
+          {activeRescueRoute ? (
+            <button
+              onClick={handleClearRescueRoute}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F3F7FC] hover:bg-[#E2E8F0] text-[#17243A] font-semibold text-[13px] border border-[#DCE6F1] shadow-xs transition-colors cursor-pointer"
+              title="Remove rescue route and return to all incidents"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-[#5D6F89]" />
+              <span>Clear Route</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setFitTrigger((prev) => prev + 1)}
+              disabled={mappedIncidents.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-[#F3F7FC] text-[#17243A] font-semibold text-[13px] border border-[#DCE6F1] shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+              title="Adjust viewport to fit all valid GPS incident markers"
+            >
+              <Crosshair className="w-3.5 h-3.5 text-[#1685D1]" />
+              <span>Fit All Markers</span>
+            </button>
+          )}
+
           <button
             onClick={() => setCenterNagpurTrigger((prev) => prev + 1)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-[#F3F7FC] text-[#17243A] font-semibold text-[13px] border border-[#DCE6F1] shadow-xs transition-colors cursor-pointer"
@@ -321,20 +514,33 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
             <Compass className="w-3.5 h-3.5 text-[#1685D1]" />
             <span>Nagpur Center</span>
           </button>
-
-          <button
-            onClick={() => setFitTrigger((prev) => prev + 1)}
-            disabled={mappedIncidents.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-[#F3F7FC] text-[#17243A] font-semibold text-[13px] border border-[#DCE6F1] shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-            title="Adjust viewport to fit all valid GPS incident markers"
-          >
-            <Crosshair className="w-3.5 h-3.5 text-[#1685D1]" />
-            <span>Fit All Markers</span>
-          </button>
         </div>
       </div>
 
-      {/* Offline Tile Notification (Non-blocking fallback banner per Section 4) */}
+      {/* Routing Notice / Validation Banner */}
+      <AnimatePresence>
+        {routingErrorNotice && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="p-3.5 rounded-xl bg-[#FEF8ED] border border-[#FDE8BF] text-[#D98A00] text-[13px] flex items-center justify-between shadow-xs"
+          >
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-[#D98A00] shrink-0" />
+              <span>{routingErrorNotice}</span>
+            </div>
+            <button
+              onClick={() => setRoutingErrorNotice(null)}
+              className="p-1 text-[#D98A00] hover:text-[#17243A] transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Offline Tile Notification */}
       <AnimatePresence>
         {tilesUnavailable && (
           <motion.div
@@ -346,7 +552,7 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
             <div className="flex items-center gap-2.5">
               <WifiOff className="w-4 h-4 text-[#D98A00] shrink-0" />
               <span>
-                <strong>Map tiles currently unavailable (Disaster Connectivity Blackout / Offline).</strong> Locally stored incidents, coordinates, and directory navigation remain 100% usable.
+                <strong>Map tiles currently unavailable (Disaster Connectivity Blackout / Offline).</strong> Stored incidents, coordinates, and navigation remain 100% usable.
               </span>
             </div>
             <button
@@ -360,9 +566,9 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
       </AnimatePresence>
 
       {/* Main Two-Panel Responsive Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Panel 1: Real Interactive Leaflet Map (8 cols on desktop) */}
-        <div className="lg:col-span-8 bg-white rounded-xl border border-[#DCE6F1] shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] overflow-hidden flex flex-col h-[640px] relative">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start min-w-0">
+        {/* Panel 1: Real Interactive Leaflet Map (7-8 cols on desktop) */}
+        <div className="lg:col-span-7 xl:col-span-8 bg-white rounded-xl border border-[#DCE6F1] shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] overflow-hidden flex flex-col h-[520px] sm:h-[600px] lg:h-[calc(100vh-220px)] min-h-[480px] max-h-[850px] relative min-w-0">
           {/* Leaflet MapContainer */}
           <div className="relative w-full h-full z-10">
             <MapContainer
@@ -380,23 +586,70 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
               <MapController
                 selectedIncident={selectedIncident}
                 mappedIncidents={mappedIncidents}
+                activeRescueRoute={activeRescueRoute}
                 fitTrigger={fitTrigger}
                 centerNagpurTrigger={centerNagpurTrigger}
+                fitRouteTrigger={fitRouteTrigger}
                 onTileError={() => setTilesUnavailable(true)}
                 onZoomChange={(z) => setZoomLevel(z)}
               />
 
-              {/* Render verified GPS incident markers */}
+              {/* Render route polyline if an incident route is active */}
+              {activeRescueRoute && activeRescueRoute.coordinates.length > 0 && (
+                <>
+                  {/* Outer casing halo for high contrast visibility */}
+                  <Polyline
+                    positions={activeRescueRoute.coordinates}
+                    pathOptions={{
+                      color: '#ffffff',
+                      weight: 7,
+                      opacity: 0.9,
+                      lineCap: 'round',
+                      lineJoin: 'round',
+                    }}
+                  />
+                  {/* Road route line */}
+                  <Polyline
+                    positions={activeRescueRoute.coordinates}
+                    pathOptions={{
+                      color: activeRescueRoute.status === 'ERROR' ? '#D98A00' : '#1685D1',
+                      weight: 4.5,
+                      opacity: 0.95,
+                      dashArray: activeRescueRoute.status === 'ERROR' ? '8, 8' : undefined,
+                      lineCap: 'round',
+                      lineJoin: 'round',
+                    }}
+                  />
+
+                  {/* Origin Marker (Operator GPS or Nagpur Rescue Base) */}
+                  <Marker
+                    position={activeRescueRoute.origin}
+                    icon={createOriginMarkerIcon(activeRescueRoute.originType === 'RESCUE_BASE')}
+                  >
+                    <Popup>
+                      <div className="p-2.5 text-[12px] font-mono">
+                        <span className="font-bold text-[#17243A] block">{activeRescueRoute.originLabel}</span>
+                        <span className="text-[#5D6F89]">
+                          Origin Coordinates: {activeRescueRoute.origin[0].toFixed(4)}, {activeRescueRoute.origin[1].toFixed(4)}
+                        </span>
+                      </div>
+                    </Popup>
+                  </Marker>
+                </>
+              )}
+
+              {/* Render ALL verified GPS incident markers (Unconditionally visible) */}
               {mappedIncidents.map((incident) => {
                 const lat = incident.location_geo!.latitude!;
                 const lon = incident.location_geo!.longitude!;
                 const isSelected = selectedIncident?.id === incident.id;
+                const isRoutedDestination = activeRescueRoute?.incidentId === incident.id;
 
                 return (
                   <Marker
                     key={incident.id}
                     position={[lat, lon]}
-                    icon={createRescueMarkerIcon(incident.priority_tier, isSelected)}
+                    icon={createRescueMarkerIcon(incident.priority_tier, isSelected, isRoutedDestination)}
                     eventHandlers={{
                       click: () => {
                         setSelectedIncident(incident);
@@ -404,7 +657,7 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
                     }}
                   >
                     <Popup className="custom-rescue-popup">
-                      <div className="p-3.5 space-y-2 min-w-[240px] max-w-[280px]">
+                      <div className="p-3.5 space-y-2 min-w-[250px] max-w-[290px]">
                         {/* Popup Header */}
                         <div className="flex items-center justify-between border-b border-[#DCE6F1] pb-2">
                           <span className="font-mono font-bold text-[13px] text-[#17243A]">
@@ -443,14 +696,26 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
                           </span>
                         </div>
 
-                        {/* Review Button */}
-                        <button
-                          onClick={() => setSelectedIncident(incident)}
-                          className="w-full mt-2 py-1.5 px-3 rounded-lg bg-[#17243A] hover:bg-[#20314A] text-white font-semibold text-[12px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Review Full Details</span>
-                        </button>
+                        {/* Actions in Popup */}
+                        <div className="flex items-center gap-2 pt-1 border-t border-[#DCE6F1]">
+                          <button
+                            onClick={() => handleViewRescuePath(incident)}
+                            className="flex-1 py-1.5 px-2 rounded-lg bg-[#1685D1] hover:bg-[#1270B0] text-white font-semibold text-[12px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                            title="Calculate road route from current position"
+                          >
+                            <Route className="w-3.5 h-3.5" />
+                            <span>{isRoutedDestination ? 'Active Route' : 'Rescue Path'}</span>
+                          </button>
+
+                          <button
+                            onClick={() => setSelectedIncident(incident)}
+                            className="py-1.5 px-2.5 rounded-lg bg-[#17243A] hover:bg-[#20314A] text-white font-semibold text-[12px] transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                            title="Review full incident record"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Details</span>
+                          </button>
+                        </div>
                       </div>
                     </Popup>
                   </Marker>
@@ -468,24 +733,135 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
               <span className="text-[#0B9B73] font-semibold">{mappedIncidents.length} GPS Mapped</span>
             </div>
 
-            {/* Map In-Canvas Tile Unavailable Overlay */}
-            {tilesUnavailable && (
-              <div className="absolute top-14 left-3 right-3 z-[400] bg-white/95 backdrop-blur-sm border border-[#FDE8BF] rounded-xl p-3 shadow-md flex items-center justify-between text-[13px] text-[#D98A00]">
-                <div className="flex items-center gap-2.5">
-                  <WifiOff className="w-4 h-4 text-[#D98A00] shrink-0" />
-                  <div>
-                    <span className="font-semibold text-[#17243A]">Internet Map Tiles Unavailable</span>
-                    <span className="block text-[12px] text-[#5D6F89]">
-                      Tile server unreachable (Offline / Blackout). Stored incidents, coordinates, and local directory remain fully operational.
+            {/* Map Overlay: Active Rescue Route Information Panel */}
+            {activeRescueRoute && (
+              <div className="absolute top-12 left-3 right-3 sm:right-auto sm:max-w-md z-[400] bg-white/95 backdrop-blur-md rounded-xl border border-[#BFDBFE] p-4 shadow-lg text-[#17243A]">
+                <div className="flex items-center justify-between border-b border-[#DCE6F1] pb-2.5 mb-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-[#1685D1]">
+                      <Route className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-[14px] text-[#17243A]">
+                          Route to {activeRescueRoute.incidentId}
+                        </span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded font-bold bg-[#ECFDF5] text-[#0B9B73] border border-[#A7F3D0]">
+                          LIVE PATH
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-[#5D6F89] block">
+                        From: {activeRescueRoute.originLabel}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleClearRescueRoute}
+                    className="p-1 rounded-lg text-[#5D6F89] hover:text-[#17243A] hover:bg-[#F3F7FC] transition-colors cursor-pointer"
+                    title="Clear Route / Back to All Incidents"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Metrics: Road Distance & Est. Drive Time */}
+                <div className="grid grid-cols-2 gap-2 text-center mb-2.5">
+                  <div className="bg-[#F8FAFC] border border-[#DCE6F1] rounded-lg p-2">
+                    <span className="text-[10px] font-mono uppercase text-[#5D6F89] block">Road Distance</span>
+                    <span className="text-[17px] font-mono font-extrabold text-[#1685D1]">
+                      {activeRescueRoute.distanceKm} km
+                    </span>
+                  </div>
+                  <div className="bg-[#F8FAFC] border border-[#DCE6F1] rounded-lg p-2">
+                    <span className="text-[10px] font-mono uppercase text-[#5D6F89] block">Est. Drive Time</span>
+                    <span className="text-[17px] font-mono font-extrabold text-[#0B9B73]">
+                      {activeRescueRoute.durationMinutes > 0 ? `~${activeRescueRoute.durationMinutes} min` : 'Direct Bearing'}
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={() => setTilesUnavailable(false)}
-                  className="px-2.5 py-1 text-[11px] font-mono font-semibold bg-[#FEF8ED] text-[#D98A00] rounded border border-[#FDE8BF] hover:bg-[#FDE8BF] cursor-pointer shrink-0"
-                >
-                  Retry
-                </button>
+
+                {/* Fallback Notice if routing service had network issues */}
+                {activeRescueRoute.status === 'ERROR' && (
+                  <div className="mb-2.5 p-2 rounded-lg bg-[#FEF8ED] border border-[#FDE8BF] text-[11px] text-[#D98A00] flex items-center gap-2">
+                    <AlertTriangle className="w-3.5 h-3.5 text-[#D98A00] shrink-0" />
+                    <span>{activeRescueRoute.errorMessage}</span>
+                  </div>
+                )}
+
+                {/* Origin Selector: Toggle between Browser GPS and Nagpur Base */}
+                <div className="flex items-center justify-between text-[11px] font-mono pt-2 border-t border-[#DCE6F1]">
+                  <span className="text-[#5D6F89]">Origin Point:</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleSwitchOrigin('AUTO')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                        activeRescueRoute.originType === 'BROWSER_GPS'
+                          ? 'bg-[#1685D1] text-white shadow-xs'
+                          : 'bg-[#F3F7FC] text-[#5D6F89] hover:text-[#17243A] border border-[#DCE6F1]'
+                      }`}
+                    >
+                      Browser GPS
+                    </button>
+                    <button
+                      onClick={() => handleSwitchOrigin('BASE')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                        activeRescueRoute.originType === 'RESCUE_BASE'
+                          ? 'bg-[#17243A] text-white shadow-xs'
+                          : 'bg-[#F3F7FC] text-[#5D6F89] hover:text-[#17243A] border border-[#DCE6F1]'
+                      }`}
+                    >
+                      Nagpur Base
+                    </button>
+                  </div>
+                </div>
+
+                {/* Turn-by-Turn Collapsible Directions */}
+                {activeRescueRoute.steps && activeRescueRoute.steps.length > 0 && (
+                  <div className="mt-2.5 pt-2 border-t border-[#DCE6F1]">
+                    <button
+                      onClick={() => setShowRouteSteps(!showRouteSteps)}
+                      className="w-full flex items-center justify-between text-[11px] font-semibold text-[#1685D1] hover:underline cursor-pointer"
+                    >
+                      <span>{showRouteSteps ? 'Hide Directions' : `Show Turn-by-Turn (${activeRescueRoute.steps.length} maneuvers)`}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showRouteSteps ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {showRouteSteps && (
+                      <div className="mt-2 max-h-36 overflow-y-auto space-y-1 pr-1 text-[11px] text-[#17243A]">
+                        {activeRescueRoute.steps.map((st, idx) => (
+                          <div key={idx} className="flex items-start justify-between gap-2 p-1.5 rounded bg-[#F8FAFC] border border-[#E2E8F0]">
+                            <span className="leading-snug">{idx + 1}. {st.instruction}</span>
+                            {st.distanceMeters > 0 && (
+                              <span className="font-mono text-[#5D6F89] shrink-0 text-[10px]">
+                                {st.distanceMeters >= 1000 ? `${(st.distanceMeters / 1000).toFixed(1)}km` : `${st.distanceMeters}m`}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Bottom Route Controls */}
+                <div className="mt-3 pt-2.5 border-t border-[#DCE6F1] flex items-center justify-between">
+                  <button
+                    onClick={() => setFitRouteTrigger((prev) => prev + 1)}
+                    className="text-[11px] font-semibold text-[#1685D1] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Crosshair className="w-3.5 h-3.5" />
+                    <span>Fit Route Bounds</span>
+                  </button>
+
+                  <button
+                    onClick={handleClearRescueRoute}
+                    className="px-2.5 py-1 text-[11px] font-semibold text-[#5D6F89] hover:text-[#17243A] bg-[#F3F7FC] hover:bg-[#E2E8F0] rounded border border-[#DCE6F1] transition-colors cursor-pointer flex items-center gap-1"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Clear Route</span>
+                  </button>
+                </div>
               </div>
             )}
 
@@ -511,8 +887,8 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Panel 2: Synchronized Incident List & Details (4 cols on desktop) */}
-        <div className="lg:col-span-4 bg-white rounded-xl border border-[#DCE6F1] shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] overflow-hidden flex flex-col h-[640px]">
+        {/* Panel 2: Synchronized Incident List & Details (4-5 cols on desktop) */}
+        <div className="lg:col-span-5 xl:col-span-4 bg-white rounded-xl border border-[#DCE6F1] shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] overflow-hidden flex flex-col h-[520px] sm:h-[600px] lg:h-[calc(100vh-220px)] min-h-[480px] max-h-[850px] min-w-0">
           {/* Panel Header */}
           <div className="p-4 border-b border-[#DCE6F1] bg-[#F8FAFC]">
             <div className="flex items-center justify-between mb-3">
@@ -617,14 +993,17 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
               filteredIncidents.map((incident) => {
                 const hasGps = incident.location_geo && incident.location_geo.latitude !== null;
                 const isSelected = selectedIncident?.id === incident.id;
+                const isRouted = activeRescueRoute?.incidentId === incident.id;
 
                 return (
                   <div
                     key={incident.id}
                     onClick={() => setSelectedIncident(incident)}
                     className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
-                      isSelected
-                        ? 'border-[#1685D1] bg-[#EFF6FF]/60 shadow-xs'
+                      isRouted
+                        ? 'border-[#1685D1] bg-[#EFF6FF]/70 shadow-xs ring-1 ring-[#1685D1]/30'
+                        : isSelected
+                        ? 'border-[#1685D1] bg-[#EFF6FF]/40 shadow-xs'
                         : 'border-[#DCE6F1] hover:border-[#BFDBFE] bg-white'
                     }`}
                   >
@@ -660,10 +1039,51 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
                       </div>
                     )}
 
-                    {/* Footer Meta */}
-                    <div className="mt-2.5 pt-2 border-t border-[#DCE6F1] flex items-center justify-between text-[11px] text-[#5D6F89] font-mono">
-                      <span>People: {incident.headcount}</span>
-                      <span>{new Date(incident.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    {/* Action Row & Footer */}
+                    <div className="mt-2.5 pt-2 border-t border-[#DCE6F1] flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-[11px] text-[#5D6F89] font-mono">
+                        <span>People: {incident.headcount}</span>
+                        <span>{new Date(incident.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {hasGps ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewRescuePath(incident);
+                            }}
+                            disabled={isCalculatingRoute && isRouted}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                              isRouted
+                                ? 'bg-[#1685D1] text-white shadow-xs'
+                                : 'bg-[#EFF6FF] text-[#1685D1] hover:bg-[#DBEAFE] border border-[#BFDBFE]'
+                            }`}
+                            title="Calculate road rescue route"
+                          >
+                            <Route className="w-3.5 h-3.5" />
+                            <span>{isRouted ? 'Route Active' : 'View Path'}</span>
+                          </button>
+                        ) : (
+                          <span
+                            className="px-2 py-0.5 rounded text-[10px] font-mono text-[#D98A00] bg-[#FEF8ED] border border-[#FDE8BF]"
+                            title="No coordinates available for road routing"
+                          >
+                            No GPS Fix
+                          </span>
+                        )}
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedIncident(incident);
+                          }}
+                          className="p-1 rounded-lg border border-[#DCE6F1] text-[#5D6F89] hover:text-[#17243A] hover:bg-[#F3F7FC] transition-colors"
+                          title="Open full incident record"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -679,6 +1099,7 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
           incident={selectedIncident}
           onClose={() => setSelectedIncident(null)}
           onUpdateStatus={handleUpdateStatus}
+          onNavigate={onNavigate}
         />
       )}
     </motion.div>

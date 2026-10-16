@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
-import { X, CheckCircle, Navigation, Users, AlertTriangle, Baby, Droplets, Clock, Send, ShieldCheck, MapPin } from 'lucide-react';
-import { Incident, IncidentStatus } from '../types';
+import { X, CheckCircle, Navigation, Users, AlertTriangle, Baby, Droplets, Clock, Send, ShieldCheck, MapPin, Route } from 'lucide-react';
+import { Incident, IncidentStatus, AppRoute } from '../types';
 import { PriorityBadge, StatusBadge, DeliveryStateBadge } from './StatusBadges';
 
 interface IncidentDetailModalProps {
   incident: Incident | null;
   onClose: () => void;
   onUpdateStatus: (id: string, status: IncidentStatus, notes?: string) => Promise<void>;
+  onNavigate?: (route: AppRoute) => void;
 }
 
 export const IncidentDetailModal: React.FC<IncidentDetailModalProps> = ({
   incident,
   onClose,
   onUpdateStatus,
+  onNavigate,
 }) => {
   const [notes, setNotes] = useState(incident?.operator_notes || '');
   const [isUpdating, setIsUpdating] = useState(false);
@@ -141,18 +143,34 @@ export const IncidentDetailModal: React.FC<IncidentDetailModalProps> = ({
             )}
 
             {incident.location_geo && incident.location_geo.latitude !== null ? (
-              <div className="flex items-center gap-4 text-[13px] font-mono bg-[#F3F7FC] p-2.5 rounded-lg border border-[#DCE6F1] text-[#17243A]">
-                <Navigation className="w-4 h-4 text-[#1685D1] shrink-0" />
-                <span>Lat: {incident.location_geo.latitude.toFixed(6)}</span>
-                <span>Lon: {incident.location_geo.longitude?.toFixed(6)}</span>
-                {incident.location_geo.accuracy_meters && (
-                  <span className="text-[#5D6F89]">±{incident.location_geo.accuracy_meters}m</span>
-                )}
+              <div className="space-y-2">
+                <div className="flex items-center gap-4 text-[13px] font-mono bg-[#F3F7FC] p-2.5 rounded-lg border border-[#DCE6F1] text-[#17243A]">
+                  <Navigation className="w-4 h-4 text-[#1685D1] shrink-0" />
+                  <span>Lat: {incident.location_geo.latitude.toFixed(6)}</span>
+                  <span>Lon: {incident.location_geo.longitude?.toFixed(6)}</span>
+                  {incident.location_geo.accuracy_meters && (
+                    <span className="text-[#5D6F89]">±{incident.location_geo.accuracy_meters}m</span>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => {
+                    sessionStorage.setItem('active_rescue_route_id', incident.id);
+                    onClose();
+                    if (onNavigate) {
+                      onNavigate('/rescue/map');
+                    }
+                  }}
+                  className="w-full py-2 px-3 rounded-lg bg-[#1685D1] hover:bg-[#1270B0] text-white font-semibold text-[13px] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                >
+                  <Route className="w-4 h-4" />
+                  <span>View Rescue Path on Live Map</span>
+                </button>
               </div>
             ) : (
               <div className="p-2.5 rounded-lg bg-[#FEF8ED] border border-[#FDE8BF] text-[13px] text-[#D98A00] flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-[#D98A00]" />
-                <span>No GPS fix provided — rely on landmark description for boat navigation.</span>
+                <span>No GPS fix provided — landmark-only report. Road routing requires geographic coordinates.</span>
               </div>
             )}
           </div>

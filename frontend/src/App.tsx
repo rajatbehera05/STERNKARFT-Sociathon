@@ -121,7 +121,7 @@ export const App: React.FC = () => {
           <DashboardPage onNavigate={handleNavigate} />
         )}
         {activeWorkspaceRoute === '/rescue/incidents' && (
-          <IncidentsPage />
+          <IncidentsPage onNavigate={handleNavigate} />
         )}
         {activeWorkspaceRoute === '/rescue/map' && (
           <MapPage onNavigate={handleNavigate} />

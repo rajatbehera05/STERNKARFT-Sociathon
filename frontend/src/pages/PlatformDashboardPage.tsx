@@ -323,28 +323,28 @@ export const PlatformDashboardPage: React.FC<PlatformDashboardProps> = ({ onNavi
                       </div>
                       <div>
                         <h3 className="text-xl font-bold text-slate-900 tracking-tight">
-                          Flood Monitoring
+                          DisasterSense Flood Monitoring
                         </h3>
                         <span className="text-xs text-amber-700 font-medium">
-                          Hydrological Telemetry
+                          Hydrological Telemetry & Early Warning
                         </span>
                       </div>
                     </div>
 
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200">
-                      COMING SOON
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200">
+                      OPERATIONAL PROTOTYPE
                     </span>
                   </div>
 
                   {/* Tier 2: Description (1-2 Concise Lines) */}
                   <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mt-2 mb-5">
-                    Sensor telemetry, water-level monitoring, risk indicators, and flood warnings. Planned architecture supports liquid-free ultrasonic distance sensors and LoRa telemetry.
+                    ESP32-based ultrasonic water-level monitoring, HC-SR04 distance telemetry, threshold early warnings, and supporting environmental measurements.
                   </p>
 
                   {/* Tier 3: Visual (Simplified, Clean Sensor Sequence) */}
                   <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-4 my-2">
                     <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-3">
-                      Planned Hydrological Flow
+                      DisasterSense Hardware Telemetry Flow
                     </div>
                     <div className="grid grid-cols-3 gap-2 items-center">
                       {/* Step 1: Ultrasonic Sensor */}
@@ -353,7 +353,7 @@ export const PlatformDashboardPage: React.FC<PlatformDashboardProps> = ({ onNavi
                           <Activity className="w-5 h-5" />
                         </div>
                         <span className="text-xs font-semibold text-slate-900">Ultrasonic Sensor</span>
-                        <span className="text-[10px] text-slate-500">HC-SR04 Node</span>
+                        <span className="text-[10px] text-slate-500">HC-SR04 (GPIO 5/18)</span>
                       </div>
 
                       {/* Step 2: Water-Level Reading */}
@@ -361,8 +361,8 @@ export const PlatformDashboardPage: React.FC<PlatformDashboardProps> = ({ onNavi
                         <div className="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-200 shadow-2xs flex items-center justify-center text-cyan-700 mb-1.5">
                           <Gauge className="w-5 h-5" />
                         </div>
-                        <span className="text-xs font-semibold text-slate-900">Water-Level Stage</span>
-                        <span className="text-[10px] text-slate-500">Channel Reading</span>
+                        <span className="text-xs font-semibold text-slate-900">Calculated Depth</span>
+                        <span className="text-[10px] text-slate-500">200cm Bed Ref</span>
                       </div>
 
                       {/* Step 3: Warning System */}
@@ -371,7 +371,7 @@ export const PlatformDashboardPage: React.FC<PlatformDashboardProps> = ({ onNavi
                           <Server className="w-5 h-5 text-slate-600" />
                         </div>
                         <span className="text-xs font-semibold text-slate-900">Warning System</span>
-                        <span className="text-[10px] text-slate-500">4-Tier Alerts</span>
+                        <span className="text-[10px] text-slate-500">5-State Matrix</span>
                       </div>
                     </div>
                   </div>
@@ -381,8 +381,8 @@ export const PlatformDashboardPage: React.FC<PlatformDashboardProps> = ({ onNavi
                 <div className="mt-6 pt-4 border-t border-slate-100 space-y-3">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-500 font-medium">Architecture Status</span>
-                    <span className="text-amber-800 font-semibold bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200">
-                      4-tier warning architecture planned
+                    <span className="text-emerald-800 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200">
+                      Phase 1 Frontend & Demonstration Active
                     </span>
                   </div>
 

@@ -114,9 +114,9 @@ export const DeviceStatusPage: React.FC<DeviceStatusPageProps> = ({ onNavigate }
       )}
 
       {/* 4 Core Diagnostic Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 min-w-0">
         {/* Card 1: ESP32 Field Gateway */}
-        <div className="bg-white rounded-xl border border-[#DCE6F1] p-5 shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] flex flex-col justify-between">
+        <div className="bg-white rounded-xl border border-[#DCE6F1] p-5 shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] flex flex-col justify-between min-w-0">
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2.5">
@@ -170,7 +170,7 @@ export const DeviceStatusPage: React.FC<DeviceStatusPageProps> = ({ onNavigate }
         </div>
 
         {/* Card 2: Local Station Backend */}
-        <div className="bg-white rounded-xl border border-[#DCE6F1] p-5 shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] flex flex-col justify-between">
+        <div className="bg-white rounded-xl border border-[#DCE6F1] p-5 shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] flex flex-col justify-between min-w-0">
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2.5">
@@ -224,7 +224,7 @@ export const DeviceStatusPage: React.FC<DeviceStatusPageProps> = ({ onNavigate }
         </div>
 
         {/* Card 3: Non-Volatile Persistence */}
-        <div className="bg-white rounded-xl border border-[#DCE6F1] p-5 shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] flex flex-col justify-between">
+        <div className="bg-white rounded-xl border border-[#DCE6F1] p-5 shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] flex flex-col justify-between min-w-0">
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2.5">
@@ -268,7 +268,7 @@ export const DeviceStatusPage: React.FC<DeviceStatusPageProps> = ({ onNavigate }
         </div>
 
         {/* Card 4: Serial / Hardware Standby */}
-        <div className="bg-white rounded-xl border border-[#DCE6F1] p-5 shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] flex flex-col justify-between">
+        <div className="bg-white rounded-xl border border-[#DCE6F1] p-5 shadow-[0_1px_3px_0_rgba(23,36,58,0.03)] flex flex-col justify-between min-w-0">
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2.5">
