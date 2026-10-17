@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   CheckCircle2,
   Truck,
@@ -7,6 +7,8 @@ import {
   Eye,
   Warehouse,
   ChevronRight,
+  RefreshCw,
+  Database,
 } from 'lucide-react';
 import {
   ReliefRequest,
@@ -24,6 +26,7 @@ import {
   INITIAL_DELIVERIES,
   CATEGORY_OPTIONS,
 } from '../data/reliefDemoData';
+import { reliefApi } from '../services/reliefApi';
 import { NagpurReliefMap } from '../components/relief/NagpurReliefMap';
 import { ReliefRequestModal } from '../components/relief/ReliefRequestModal';
 import { RequestDetailModal } from '../components/relief/RequestDetailModal';
@@ -36,7 +39,7 @@ interface ReliefCoordinationPageProps {
 }
 
 export const ReliefCoordinationPage: React.FC<ReliefCoordinationPageProps> = () => {
-  // In-Memory Master State (frontend-only simulation)
+  // Live State synced with backend PostgreSQL
   const [requests, setRequests] = useState<ReliefRequest[]>(INITIAL_RELIEF_REQUESTS);
   const [inventory, setInventory] = useState<ResourceInventoryItem[]>(
     INITIAL_RESOURCE_INVENTORY
@@ -44,6 +47,41 @@ export const ReliefCoordinationPage: React.FC<ReliefCoordinationPageProps> = () 
   const [deliveries, setDeliveries] = useState<DeliveryAllocation[]>(
     INITIAL_DELIVERIES
   );
+  const [isLoadingBackend, setIsLoadingBackend] = useState(false);
+  const [isDbConnected, setIsDbConnected] = useState(false);
+
+  // Synchronize with PostgreSQL on mount
+  const loadData = async () => {
+    setIsLoadingBackend(true);
+    try {
+      const [backendRequests, backendInventory, backendDeliveries] = await Promise.all([
+        reliefApi.getRequests(),
+        reliefApi.getInventory(),
+        reliefApi.getDeliveries(),
+      ]);
+
+      if (backendRequests && backendRequests.length > 0) {
+        setRequests(backendRequests);
+      }
+      if (backendInventory && backendInventory.length > 0) {
+        setInventory(backendInventory);
+      }
+      if (backendDeliveries && backendDeliveries.length > 0) {
+        setDeliveries(backendDeliveries);
+      }
+      setIsDbConnected(true);
+    } catch (err) {
+      console.warn('PostgreSQL fetch fallback to local state:', err);
+    } finally {
+      setIsLoadingBackend(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 10000); // 10s live polling
+    return () => clearInterval(interval);
+  }, []);
 
   // Active view tab
   const [activeTab, setActiveTab] = useState<
@@ -122,13 +160,37 @@ export const ReliefCoordinationPage: React.FC<ReliefCoordinationPageProps> = () 
   }, [requests, inventory, deliveries]);
 
   // Request Submission Handler
-  const handleCreateRequest = (newRequest: ReliefRequest) => {
+  const handleCreateRequest = async (newRequest: ReliefRequest) => {
     setRequests((prev) => [newRequest, ...prev]);
     setSelectedRequest(newRequest);
+    try {
+      await reliefApi.submitPublicRequest({
+        requesterName: newRequest.requesterName,
+        contactNumber: newRequest.contactNumber,
+        organization: newRequest.organization,
+        locality: newRequest.location.locality,
+        addressOrLandmark: newRequest.location.addressOrLandmark,
+        latitude: newRequest.location.latitude,
+        longitude: newRequest.location.longitude,
+        peopleAffected: newRequest.peopleAffected,
+        hasImmediateHealthThreat: newRequest.hasImmediateHealthThreat,
+        situationDescription: newRequest.situationDescription,
+        items: newRequest.items.map((i) => ({
+          category: i.category,
+          name: i.name,
+          requestedQty: i.requestedQty,
+          unit: i.unit,
+          notes: i.notes,
+        })),
+      });
+      loadData();
+    } catch (err) {
+      console.warn('Backend sync error creating request:', err);
+    }
   };
 
   // Verification Update Handler
-  const handleUpdateVerification = (
+  const handleUpdateVerification = async (
     requestId: string,
     status: VerificationStatus,
     reason?: string
@@ -146,10 +208,15 @@ export const ReliefCoordinationPage: React.FC<ReliefCoordinationPageProps> = () 
         return r;
       })
     );
+    try {
+      await reliefApi.verifyRequest(requestId, status, reason);
+    } catch (err) {
+      console.warn('Backend sync error verifying request:', err);
+    }
   };
 
   // Urgency Update Handler
-  const handleUpdateUrgency = (
+  const handleUpdateUrgency = async (
     requestId: string,
     urgency: UrgencyLevel,
     reason: string
@@ -167,10 +234,15 @@ export const ReliefCoordinationPage: React.FC<ReliefCoordinationPageProps> = () 
         return r;
       })
     );
+    try {
+      await reliefApi.updateUrgency(requestId, urgency, reason);
+    } catch (err) {
+      console.warn('Backend sync error updating urgency:', err);
+    }
   };
 
   // Allocation Confirmation Handler (from matching workspace)
-  const handleConfirmAllocation = (
+  const handleConfirmAllocation = async (
     requestId: string,
     itemId: string,
     resourceId: string,
@@ -240,10 +312,23 @@ export const ReliefCoordinationPage: React.FC<ReliefCoordinationPageProps> = () 
     };
 
     setDeliveries((prev) => [newDelivery, ...prev]);
+
+    try {
+      await reliefApi.allocateResources({
+        requestId,
+        requestItemId: itemId,
+        resourceId,
+        quantity: allocatedQty,
+        notes,
+      });
+      loadData();
+    } catch (err) {
+      console.warn('Backend sync error allocating resources:', err);
+    }
   };
 
   // Delivery Status Progression Handler
-  const handleAdvanceDelivery = (deliveryId: string) => {
+  const handleAdvanceDelivery = async (deliveryId: string) => {
     const delivery = deliveries.find((d) => d.id === deliveryId);
     if (!delivery || delivery.deliveryStatus === 'DELIVERED') return;
 
@@ -304,6 +389,12 @@ export const ReliefCoordinationPage: React.FC<ReliefCoordinationPageProps> = () 
           return res;
         })
       );
+    }
+
+    try {
+      await reliefApi.updateDeliveryStatus(deliveryId, nextStatus);
+    } catch (err) {
+      console.warn('Backend sync error advancing delivery:', err);
     }
   };
 
@@ -415,21 +506,42 @@ export const ReliefCoordinationPage: React.FC<ReliefCoordinationPageProps> = () 
 
   return (
     <div className="space-y-6">
-      {/* 1. Demonstration Notice Banner */}
-      <div className="p-3 bg-slate-900 text-slate-200 rounded-2xl border border-slate-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-        <div className="flex items-center gap-2.5">
+      {/* 1. Operations Notice & Database Sync Banner */}
+      <div className="p-3.5 bg-slate-900 text-slate-200 rounded-2xl border border-slate-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+        <div className="flex flex-wrap items-center gap-2.5">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
           <span>
-            <strong>NAGPUR RELIEF COORDINATION GRID:</strong> Geospatial emergency relief operations centered on Nagpur, Maharashtra (21.1458°N, 79.0882°E). Demonstrating request matching and urgent unmet needs.
+            <strong>NAGPUR RELIEF COORDINATION GRID:</strong> Geospatial emergency relief operations centered on Nagpur (21.1458°N, 79.0882°E).
           </span>
+          {isDbConnected ? (
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-700/80 text-emerald-300 font-mono text-[10px]">
+              <Database className="w-3 h-3 text-emerald-400" />
+              <span>POSTGRESQL LIVE</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[10px]">
+              <Database className="w-3 h-3 text-slate-400" />
+              <span>CACHED DATA</span>
+            </span>
+          )}
         </div>
-        <button
-          onClick={() => setIsNewRequestModalOpen(true)}
-          className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer shrink-0 transition-transform hover:scale-105"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Request Relief</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={loadData}
+            disabled={isLoadingBackend}
+            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors cursor-pointer"
+            title="Refresh database records"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoadingBackend ? 'animate-spin text-blue-400' : ''}`} />
+          </button>
+          <button
+            onClick={() => setIsNewRequestModalOpen(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-transform hover:scale-105"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Manual Intake</span>
+          </button>
+        </div>
       </div>
 
       {/* 2. Command Center Overview Metrics */}

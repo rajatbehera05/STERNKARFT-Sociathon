@@ -11,6 +11,8 @@ import { PlaceholderPage } from './components/PlaceholderPage';
 import { PlatformDashboardPage } from './pages/PlatformDashboardPage';
 import { FloodDashboardPage } from './pages/FloodDashboardPage';
 import { SosPage } from './pages/SosPage';
+import { PublicReliefRequestPage } from './pages/PublicReliefRequestPage';
+import { TrackReliefPage } from './pages/TrackReliefPage';
 import { RescueLayout } from './components/RescueLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { IncidentsPage } from './pages/IncidentsPage';
@@ -18,6 +20,9 @@ import { MapPage } from './pages/MapPage';
 import { CommunicationsPage } from './pages/CommunicationsPage';
 import { DeviceStatusPage } from './pages/DeviceStatusPage';
 import { ReliefCoordinationPage } from './pages/ReliefCoordinationPage';
+import { OperatorLoginModal } from './components/OperatorLoginModal';
+import { authStorage } from './services/reliefApi';
+import { ShieldAlert, Lock, ArrowLeft, HeartHandshake } from 'lucide-react';
 import {
   TopographicLinesLeft,
   TopographicLinesRight,
@@ -28,6 +33,8 @@ export const App: React.FC = () => {
   const [currentRoute, setCurrentRoute] = useState<AppRoute>(() => {
     const path = window.location.pathname;
     if (path === '/sos') return '/sos';
+    if (path === '/request-relief') return '/request-relief';
+    if (path === '/track-relief') return '/track-relief';
     if (path === '/dashboard') return '/dashboard';
     if (path === '/flood/dashboard' || path === '/flood') return '/flood/dashboard';
     if (path === '/rescue/dashboard') return '/rescue/dashboard';
@@ -38,6 +45,9 @@ export const App: React.FC = () => {
     if (path === '/rescue/relief' || path === '/relief') return '/rescue/relief';
     return '/';
   });
+
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => authStorage.hasToken());
 
   // Handle route navigation
   const handleNavigate = (route: AppRoute) => {
@@ -53,6 +63,8 @@ export const App: React.FC = () => {
     const onPopState = () => {
       const path = window.location.pathname;
       if (path === '/sos') setCurrentRoute('/sos');
+      else if (path === '/request-relief') setCurrentRoute('/request-relief');
+      else if (path === '/track-relief') setCurrentRoute('/track-relief');
       else if (path === '/dashboard') setCurrentRoute('/dashboard');
       else if (path === '/flood/dashboard' || path === '/flood') setCurrentRoute('/flood/dashboard');
       else if (path === '/rescue/dashboard') setCurrentRoute('/rescue/dashboard');
@@ -68,6 +80,95 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
+  // Check authentication on route change
+  useEffect(() => {
+    setIsAuthenticated(authStorage.hasToken());
+  }, [currentRoute]);
+
+  // Dedicated Public Emergency Relief Request Page
+  if (currentRoute === '/request-relief') {
+    return <PublicReliefRequestPage onNavigate={handleNavigate} />;
+  }
+
+  // Dedicated Public Relief Tracker Page
+  if (currentRoute === '/track-relief') {
+    return <TrackReliefPage onNavigate={handleNavigate} />;
+  }
+
+  // --- ACCESS CONTROL GATE FOR PRIVATE RESCUE DASHBOARDS ---
+  const isProtectedOperatorRoute =
+    currentRoute === '/dashboard' ||
+    currentRoute === '/flood/dashboard' ||
+    currentRoute === '/flood' ||
+    currentRoute === '/rescue/dashboard' ||
+    currentRoute === '/rescue/incidents' ||
+    currentRoute === '/rescue/map' ||
+    currentRoute === '/rescue/communications' ||
+    currentRoute === '/rescue/devices' ||
+    currentRoute === '/rescue/relief' ||
+    currentRoute === '/relief' ||
+    currentRoute === '/map' ||
+    currentRoute === '/incidents';
+
+  if (isProtectedOperatorRoute && !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between">
+        <div className="max-w-md mx-auto my-auto px-4 py-12 text-center">
+          <div className="w-16 h-16 bg-red-950/80 border-2 border-red-700/80 rounded-2xl mx-auto flex items-center justify-center text-red-400 mb-6 shadow-lg shadow-red-900/30">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-950/60 border border-red-800 text-red-400 text-xs font-mono font-bold uppercase tracking-wider mb-3">
+            <ShieldAlert className="w-3.5 h-3.5" />
+            <span>Authorized Personnel Only</span>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            Restricted Rescue Workspace
+          </h1>
+          <p className="mt-3 text-sm text-slate-300 leading-relaxed">
+            Internal rescue coordination, flood gauge telemetry, and relief inventory dispatch
+            require authenticated operator clearance to protect civilian privacy.
+          </p>
+
+          <div className="mt-8 space-y-3">
+            <button
+              onClick={() => setIsLoginModalOpen(true)}
+              className="w-full py-3 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Lock className="w-4 h-4" />
+              <span>Sign In as Field Operator</span>
+            </button>
+
+            <button
+              onClick={() => handleNavigate('/request-relief')}
+              className="w-full py-3 px-5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm border border-slate-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <HeartHandshake className="w-4 h-4 text-blue-400" />
+              <span>Public: Request Emergency Relief</span>
+            </button>
+
+            <button
+              onClick={() => handleNavigate('/')}
+              className="w-full py-2.5 px-4 text-xs font-semibold text-slate-400 hover:text-white transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Return to Public Homepage</span>
+            </button>
+          </div>
+        </div>
+
+        <OperatorLoginModal
+          isOpen={isLoginModalOpen}
+          onClose={() => setIsLoginModalOpen(false)}
+          onSuccess={() => {
+            setIsAuthenticated(true);
+          }}
+        />
+      </div>
+    );
+  }
+
   // 1. Main Platform Launchpad Dashboard (`/dashboard`)
   if (currentRoute === '/dashboard') {
     return <PlatformDashboardPage onNavigate={handleNavigate} />;
@@ -78,7 +179,7 @@ export const App: React.FC = () => {
     return <FloodDashboardPage onNavigate={handleNavigate} />;
   }
 
-  // 2. Rescue Communication Workspace Routes (`/rescue/*` and `/relief`)
+  // 3. Rescue Communication Workspace Routes (`/rescue/*` and `/relief`)
   const isRescueWorkspace =
     currentRoute === '/rescue/dashboard' ||
     currentRoute === '/rescue/incidents' ||
@@ -91,7 +192,6 @@ export const App: React.FC = () => {
     currentRoute === '/incidents';
 
   if (isRescueWorkspace) {
-    // Determine active workspace route for sidebar highlighting
     const activeWorkspaceRoute: AppRoute =
       currentRoute === '/incidents'
         ? '/rescue/incidents'
@@ -150,7 +250,7 @@ export const App: React.FC = () => {
     );
   }
 
-  // 3. Public Civilian Portal (`/` landing page and `/sos`)
+  // 4. Public Civilian Portal (`/` landing page and `/sos`)
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-[#f4f9fd] via-[#eef6fc] to-[#f8fafc] text-slate-800 flex flex-col justify-between overflow-x-hidden selection:bg-red-600 selection:text-white">
       {/* Background Layer: Atmospheric daylight ambient fields */}
@@ -182,7 +282,7 @@ export const App: React.FC = () => {
               {/* 1. Rescue Hero */}
               <HeroSection onNavigate={handleNavigate} />
 
-              {/* 2. System Features & Core Capabilities (Refined Card Architecture) */}
+              {/* 2. System Features & Core Capabilities */}
               <SystemFeatures />
 
               {/* 3. Smoothly blended "From SOS to Rescue" section */}

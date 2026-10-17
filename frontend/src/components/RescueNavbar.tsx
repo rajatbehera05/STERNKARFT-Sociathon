@@ -148,6 +148,19 @@ export const RescueNavbar: React.FC<RescueNavbarProps> = ({
               <ArrowLeft className="w-3.5 h-3.5" />
               <span className="hidden md:inline">Public Portal</span>
             </button>
+
+            {/* Operator Logout */}
+            <button
+              onClick={async () => {
+                const { reliefApi } = await import('../services/reliefApi');
+                await reliefApi.logoutOperator();
+                onNavigate('/');
+              }}
+              className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-950/40 border border-red-900/60 transition-colors cursor-pointer"
+              title="Log Out of Operator Session"
+            >
+              <span>Lock / Exit</span>
+            </button>
           </div>
         </div>
       </div>

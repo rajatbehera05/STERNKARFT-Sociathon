@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, LayoutDashboard } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { AppRoute } from '../types';
 import { LiveClock } from './LiveClock';
 
@@ -58,14 +58,61 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
             available. Send an SOS and help rescue teams coordinate a response.
           </p>
 
-          {/* CTA Action Buttons */}
-          <div className="mt-8 flex flex-wrap items-center gap-4 w-full sm:w-auto">
-            {/* Primary Action: Send SOS (Restrained Emergency-Red Style) */}
+          {/* Dedicated Relief Request Card */}
+          <div className="mt-6 p-4 sm:p-5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-md max-w-xl w-full">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 shrink-0 mt-0.5">
+                <svg
+                  className="w-5 h-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h2 className="text-sm font-bold text-slate-900">
+                  Public Relief & Essential Supplies
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
+                  Need food, drinking water, shelter, medical assistance, or other essential supplies?
+                  Submit a request to the relief coordination team.
+                </p>
+                <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => onNavigate('/request-relief')}
+                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-600/20 flex items-center gap-2 transition-colors cursor-pointer"
+                    aria-label="Request Emergency Help"
+                  >
+                    <span>Request Emergency Help</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </motion.button>
+
+                  <button
+                    onClick={() => onNavigate('/track-relief')}
+                    className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
+                  >
+                    Track Request Status
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Secondary Action: Send SOS Button */}
+          <div className="mt-6 flex flex-wrap items-center gap-4 w-full sm:w-auto">
+            {/* Primary SOS Action */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onNavigate('/sos')}
-              className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-base shadow-md shadow-red-600/20 flex items-center justify-center gap-3 transition-colors group cursor-pointer"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-sm shadow-md shadow-red-600/20 flex items-center justify-center gap-2.5 transition-colors group cursor-pointer"
               aria-label="Send Emergency SOS alert"
             >
               {/* Emergency Beacon Icon */}
@@ -76,7 +123,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
                 strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="w-5 h-5 shrink-0 animate-pulse"
+                className="w-4 h-4 shrink-0 animate-pulse"
                 aria-hidden="true"
               >
                 <path d="M12 2v4" />
@@ -89,21 +136,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
                 <path d="m19.07 4.93-2.83 2.83" />
                 <circle cx="12" cy="12" r="3" fill="currentColor" />
               </svg>
-              <span>Send SOS</span>
+              <span>Report Critical SOS Distress</span>
               <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-            </motion.button>
-
-            {/* Secondary Action: Open Dashboard (Clean Outlined Style) */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => onNavigate('/dashboard')}
-              className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-bold text-base border-2 border-slate-300 hover:border-slate-400 shadow-xs flex items-center justify-center gap-3 transition-colors group cursor-pointer"
-              aria-label="Open Rescue Coordination Dashboard"
-            >
-              <LayoutDashboard className="w-5 h-5 text-slate-700 shrink-0" />
-              <span>Open Dashboard</span>
-              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-800 group-hover:translate-x-1 transition-all" />
             </motion.button>
           </div>
         </div>

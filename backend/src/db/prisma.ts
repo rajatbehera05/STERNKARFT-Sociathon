@@ -22,7 +22,7 @@ export function getPrismaClient(): PrismaClient {
 }
 
 /**
- * Actively verifies database connectivity against local PostgreSQL on port 5433.
+ * Actively verifies database connectivity against local PostgreSQL on port 5434.
  * Executes an actual round-trip query. Does not assume connected merely because DATABASE_URL is defined.
  */
 export async function verifyPrismaConnection(): Promise<{
@@ -43,7 +43,7 @@ export async function verifyPrismaConnection(): Promise<{
       ok: false,
       error:
         err.message ||
-        'Failed to establish connection to PostgreSQL on localhost:5433 (sternkraft_db).',
+        'Failed to establish connection to PostgreSQL on 127.0.0.1:5434 (sternkraft_db).',
     };
   }
 }

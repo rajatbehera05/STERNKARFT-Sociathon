@@ -1,6 +1,8 @@
 export type AppRoute =
   | '/'
   | '/sos'
+  | '/request-relief'
+  | '/track-relief'
   | '/dashboard'
   | '/rescue/dashboard'
   | '/rescue/incidents'

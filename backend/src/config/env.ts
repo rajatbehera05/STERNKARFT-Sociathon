@@ -17,7 +17,7 @@ const envSchema = z.object({
     .default('http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173'),
   DATABASE_URL: z
     .string()
-    .default('postgresql://postgres:<YOUR_POSTGRESQL_PASSWORD>@localhost:5433/sternkraft_db?schema=public'),
+    .default('postgresql://postgres@127.0.0.1:5434/sternkraft_db?schema=public'),
   API_VERSION: z.string().default('1.0.0'),
   SERVICE_NAME: z.string().default('sternx-unified-backend'),
 });

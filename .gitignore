@@ -157,4 +157,5 @@ coverage/
 *.sqlite-shm
 *.db
 backend/data/*.sqlite*
+backend/data/pgdata/
 

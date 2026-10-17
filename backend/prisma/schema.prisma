@@ -208,3 +208,133 @@ model ResponderUpdate {
 
   @@index([responderId, timestamp(sort: Desc)])
 }
+
+// ------------------------------------------------------------------------------
+// DOMAIN 3: Relief Coordination & Municipal Logistics
+// ------------------------------------------------------------------------------
+
+enum ReliefCategory {
+  FOOD_NUTRITION
+  SAFE_WATER
+  SHELTER_BEDDING
+  MEDICAL_ASSISTANCE
+  HYGIENE_SANITATION
+  CLOTHING_ESSENTIALS
+  RESCUE_EVACUATION
+  OTHER_ESSENTIALS
+}
+
+enum ReliefUrgency {
+  IMMEDIATE
+  URGENT
+  ELEVATED
+  ROUTINE
+}
+
+enum ReliefVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  CLARIFICATION_NEEDED
+}
+
+enum ReliefDeliveryStatus {
+  ASSIGNED
+  PREPARING
+  IN_TRANSIT
+  DELIVERED
+}
+
+model ReliefRequest {
+  id                       String                   @id
+  requesterType            String                   @default("AFFECTED_PERSON")
+  requesterName            String?
+  contactNumber            String?
+  alternateNumber          String?
+  organization             String?
+  locality                 String
+  addressOrLandmark        String
+  latitude                 Float
+  longitude                Float
+  isWithinNagpurBounds     Boolean                  @default(true)
+  peopleAffected           Int                      @default(1)
+  hasImmediateHealthThreat Boolean                  @default(false)
+  situationDescription     String
+  verificationStatus       ReliefVerificationStatus @default(PENDING)
+  verificationReason       String?
+  urgency                  ReliefUrgency            @default(URGENT)
+  urgencyReason            String                   @default("Initial public submission triage")
+  operatorNotes            String?
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+
+  items                    ReliefRequestItem[]
+  deliveries               ReliefDelivery[]
+
+  @@index([verificationStatus])
+  @@index([urgency])
+  @@index([createdAt(sort: Desc)])
+}
+
+model ReliefRequestItem {
+  id           String         @id @default(uuid())
+  requestId    String
+  request      ReliefRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  category     ReliefCategory
+  name         String
+  requestedQty Float
+  allocatedQty Float          @default(0)
+  fulfilledQty Float          @default(0)
+  unit         String
+  notes        String?
+  createdAt    DateTime       @default(now())
+
+  deliveries   ReliefDelivery[]
+
+  @@index([requestId])
+}
+
+model ReliefInventoryItem {
+  id               String         @id @default(uuid())
+  name             String
+  category         ReliefCategory
+  totalStock       Float          @default(0)
+  reservedStock    Float          @default(0)
+  unit             String
+  storageLocation  String
+  reorderThreshold Float          @default(10)
+  lastVerifiedAt   DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  deliveries       ReliefDelivery[]
+
+  @@index([category])
+  @@index([storageLocation])
+}
+
+model ReliefDelivery {
+  id                  String               @id @default(uuid())
+  requestId           String
+  request             ReliefRequest        @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  requestItemId       String
+  requestItem         ReliefRequestItem    @relation(fields: [requestItemId], references: [id], onDelete: Cascade)
+  resourceId          String
+  resource            ReliefInventoryItem  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  resourceName        String
+  category            ReliefCategory
+  allocatedQty        Float
+  unit                String
+  originLocation      String
+  destinationLocation String
+  assignedResponder   String?
+  deliveryStatus      ReliefDeliveryStatus @default(ASSIGNED)
+  notes               String?
+  dispatchedAt        DateTime?
+  deliveredAt         DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([requestId])
+  @@index([deliveryStatus])
+}

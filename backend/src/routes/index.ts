@@ -2,9 +2,11 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { healthRouter } from './health.js';
 import { floodRouter } from './flood.js';
 import { rescueRouter } from './rescue.js';
+import { reliefRouter } from './relief.js';
+import { authRouter } from './auth.js';
 import { rescueService } from '../services/rescueService.js';
 import { isPrismaActive, getPrismaClient } from '../db/prisma.js';
-import { env } from '../config/env.js';
+import { createRateLimiter } from '../middleware/rateLimiter.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 export const apiRouter = Router();
@@ -12,11 +14,20 @@ export const apiRouter = Router();
 // 1. Health check & system diagnostics
 apiRouter.use('/health', healthRouter);
 
-// 2. DisasterSense Flood Monitoring Domain
+// 2. Operator Authentication
+apiRouter.use('/auth', authRouter);
+
+// 3. DisasterSense Flood Monitoring Domain
 apiRouter.use('/flood', floodRouter);
 
-// 3. ReQNet Rescue Communication Domain
+// 4. ReQNet Rescue Communication Domain
 apiRouter.use('/rescue', rescueRouter);
+
+// 5. Relief Coordination Domain (Public submission & Protected operator triage)
+apiRouter.use('/relief', reliefRouter);
+
+// Rate limiter for public SOS submissions (max 15 submissions per minute per IP)
+const publicSosLimiter = createRateLimiter(60 * 1000, 15);
 
 // ------------------------------------------------------------------------------
 // Top-level aliases for existing frontend API service compatibility
@@ -70,7 +81,7 @@ apiRouter.patch('/incidents/:id/status', async (req: Request, res: Response, nex
 });
 
 // POST /api/sos
-apiRouter.post('/sos', async (req: Request, res: Response, next: NextFunction) => {
+apiRouter.post('/sos', publicSosLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await rescueService.createIncident(req.body);
     const inc = result.incident;
