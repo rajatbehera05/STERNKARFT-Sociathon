@@ -243,6 +243,11 @@ export const FloodDashboardPage: React.FC<FloodDashboardPageProps> = ({
     };
 
     fetchInitialData();
+    const interval = setInterval(fetchInitialData, 3000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   // Latest reading is the last element of readingsHistory

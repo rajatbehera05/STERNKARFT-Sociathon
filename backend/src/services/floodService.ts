@@ -129,7 +129,7 @@ export const floodService = {
 
     let calculatedDepthCm: number | null = null;
     if (isValid && input.water_surface_distance_cm !== null && input.water_surface_distance_cm >= 0) {
-      calculatedDepthCm = +(thresholds.reference_height_cm - input.water_surface_distance_cm).toFixed(1);
+      calculatedDepthCm = Math.max(0, +(thresholds.reference_height_cm - input.water_surface_distance_cm).toFixed(1));
     }
 
     const prisma = getPrismaOrThrow();
