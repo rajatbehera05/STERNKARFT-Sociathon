@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -87,6 +87,16 @@ export const RescueLayout: React.FC<RescueLayoutProps> = ({
   onRefresh,
   isRefreshing = false,
 }) => {
+  const isRelief = currentRoute === '/rescue/relief' || currentRoute === '/relief';
+  const visibleNavItems: NavItem[] = useMemo(() => {
+    return NAV_ITEMS.filter((item: NavItem) => {
+      if (isRelief && item.id === 'devices') {
+        return false;
+      }
+      return true;
+    });
+  }, [isRelief]);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [health, setHealth] = useState<GatewayHealth | null>(null);
   const [currentTime, setCurrentTime] = useState<string>(new Date().toLocaleTimeString());
@@ -135,26 +145,28 @@ export const RescueLayout: React.FC<RescueLayoutProps> = ({
             </div>
             <div className="flex flex-col text-left">
               <span className="font-extrabold text-[15px] tracking-wider uppercase text-[#F8FAFC] leading-none">
-                ReQNet
+                {isRelief ? 'ReliefCoord' : 'ReQNet'}
               </span>
               <span className="text-[11px] text-[#94A3B8] font-medium leading-tight mt-0.5">
-                Rescue Comms
+                {isRelief ? 'Nagpur Relief' : 'Rescue Comms'}
               </span>
             </div>
           </button>
         </div>
 
         <div className="flex items-center gap-2">
-          {health?.status === 'ok' ? (
-            <span
-              className="w-2.5 h-2.5 rounded-full bg-[#34D399] ring-2 ring-[#34D399]/25 transition-colors"
-              title="Gateway Online"
-            />
-          ) : (
-            <span
-              className="w-2.5 h-2.5 rounded-full bg-[#EF4444] transition-colors"
-              title="Gateway Offline"
-            />
+          {!isRelief && (
+            health?.status === 'ok' ? (
+              <span
+                className="w-2.5 h-2.5 rounded-full bg-[#34D399] ring-2 ring-[#34D399]/25 transition-colors"
+                title="Gateway Online"
+              />
+            ) : (
+              <span
+                className="w-2.5 h-2.5 rounded-full bg-[#EF4444] transition-colors"
+                title="Gateway Offline"
+              />
+            )
           )}
 
           <button
@@ -181,23 +193,32 @@ export const RescueLayout: React.FC<RescueLayoutProps> = ({
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-[17px] font-black tracking-wider uppercase text-[#F8FAFC] leading-none">
-                ReQNet
+                {isRelief ? 'ReliefCoord' : 'ReQNet'}
               </span>
               <span className="text-[12px] font-semibold text-[#65C7FF] mt-1 tracking-wide">
-                Rescue Communication
+                {isRelief ? 'Relief Coordination' : 'Rescue Communication'}
               </span>
             </div>
           </button>
 
           <div className="flex items-center justify-between text-[11px] font-mono text-[#94A3B8] pt-2 border-t border-[#1F2E44]">
-            <span>OFFLINE MESH GATEWAY</span>
-            <span className="text-[#34D399] font-bold tracking-wider">READY</span>
+            {isRelief ? (
+              <>
+                <span>CIVILIAN RELIEF GRID</span>
+                <span className="text-emerald-400 font-bold tracking-wider">ACTIVE</span>
+              </>
+            ) : (
+              <>
+                <span>OFFLINE MESH GATEWAY</span>
+                <span className="text-[#34D399] font-bold tracking-wider">READY</span>
+              </>
+            )}
           </div>
         </div>
 
         {/* Navigation Items */}
         <nav className="flex-grow p-3 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentRoute === item.route;
             const isPlatformBack = item.id === 'platform';
@@ -262,26 +283,38 @@ export const RescueLayout: React.FC<RescueLayoutProps> = ({
           })}
         </nav>
 
-        {/* Sidebar Footer: Gateway State & Field Unit ID */}
+        {/* Sidebar Footer: Gateway State or Relief State & Field Unit ID */}
         <div className="p-4 border-t border-[#1F2E44] bg-[#0E1522] flex flex-col gap-2">
-          <div className="flex items-center justify-between text-[12px] font-mono">
-            <span className="text-[#94A3B8]">Gateway Status:</span>
-            {health?.status === 'ok' ? (
-              <span className="text-[#34D399] font-bold flex items-center gap-2">
+          {isRelief ? (
+            <div className="flex items-center justify-between text-[12px] font-mono">
+              <span className="text-[#94A3B8]">Relief Operations:</span>
+              <span className="text-emerald-400 font-bold flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#34D399] ring-2 ring-[#34D399]/25" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400 ring-2 ring-emerald-400/25" />
                 </span>
-                ONLINE
+                COORDINATING
               </span>
-            ) : (
-              <span className="text-[#F87171] font-bold flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#EF4444]" />
-                OFFLINE
-              </span>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between text-[12px] font-mono">
+              <span className="text-[#94A3B8]">Gateway Status:</span>
+              {health?.status === 'ok' ? (
+                <span className="text-[#34D399] font-bold flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#34D399] ring-2 ring-[#34D399]/25" />
+                  </span>
+                  ONLINE
+                </span>
+              ) : (
+                <span className="text-[#F87171] font-bold flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#EF4444]" />
+                  OFFLINE
+                </span>
+              )}
+            </div>
+          )}
           <div className="text-[11px] font-mono text-[#64748B] flex items-center justify-between">
-            <span>Field Console #1</span>
+            <span>{isRelief ? 'Nagpur Field Depot' : 'Field Console #1'}</span>
             <span>{currentTime}</span>
           </div>
         </div>
@@ -314,7 +347,7 @@ export const RescueLayout: React.FC<RescueLayoutProps> = ({
                     <ShieldAlert className="w-4 h-4" />
                   </div>
                   <span className="font-bold text-[14px] uppercase tracking-wider text-[#F8FAFC]">
-                    Rescue Navigation
+                    {isRelief ? 'Relief Navigation' : 'Rescue Navigation'}
                   </span>
                 </div>
                 <button
@@ -327,7 +360,7 @@ export const RescueLayout: React.FC<RescueLayoutProps> = ({
               </div>
 
               <nav className="flex-grow py-3 space-y-1">
-                {NAV_ITEMS.map((item) => {
+                {visibleNavItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = currentRoute === item.route;
                   const isPlatformBack = item.id === 'platform';
@@ -393,7 +426,9 @@ export const RescueLayout: React.FC<RescueLayoutProps> = ({
                   Platform
                 </button>
                 <span>/</span>
-                <span className="text-[#0284C7] font-semibold">Rescue Communication</span>
+                <span className="text-[#0284C7] font-semibold">
+                  {isRelief ? 'Relief Coordination' : 'Rescue Communication'}
+                </span>
               </div>
               <h1 className="text-2xl sm:text-[28px] font-bold text-[#17243A] tracking-tight leading-snug">
                 {title}
@@ -405,19 +440,21 @@ export const RescueLayout: React.FC<RescueLayoutProps> = ({
 
             {/* Quick Actions & Gateway Status */}
             <div className="flex items-center gap-2.5 shrink-0">
-              {/* Calm Verified Gateway Badge */}
-              {health?.status === 'ok' ? (
-                <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-[12px] font-semibold text-[#0B9B73]">
-                  <span className="relative flex h-2 w-2">
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#34D399] ring-2 ring-[#34D399]/20" />
-                  </span>
-                  <span>Gateway Active</span>
-                </div>
-              ) : (
-                <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/25 text-[12px] font-semibold text-[#EF4444]">
-                  <span className="w-2 h-2 rounded-full bg-[#EF4444]" />
-                  <span>Gateway Offline</span>
-                </div>
+              {/* Calm Verified Gateway Badge (Hidden on Relief Coordination) */}
+              {!isRelief && (
+                health?.status === 'ok' ? (
+                  <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-[12px] font-semibold text-[#0B9B73]">
+                    <span className="relative flex h-2 w-2">
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#34D399] ring-2 ring-[#34D399]/20" />
+                    </span>
+                    <span>Gateway Active</span>
+                  </div>
+                ) : (
+                  <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/25 text-[12px] font-semibold text-[#EF4444]">
+                    <span className="w-2 h-2 rounded-full bg-[#EF4444]" />
+                    <span>Gateway Offline</span>
+                  </div>
+                )
               )}
 
               {/* Primary Action Button: Sync Data with polished animations */}
