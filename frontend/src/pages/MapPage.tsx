@@ -6,6 +6,7 @@ import {
   Marker,
   Popup,
   Polyline,
+  Circle,
   useMap,
 } from 'react-leaflet';
 import L from 'leaflet';
@@ -25,12 +26,21 @@ import {
   RotateCcw,
   X,
   ChevronDown,
+  Navigation,
+  Square,
+  LocateFixed,
+  CheckCircle2,
+  CornerUpRight,
+  ShieldAlert,
+  Minimize2,
+  Maximize2,
 } from 'lucide-react';
 import { Incident, IncidentStatus, PriorityTier, AppRoute } from '../types';
 import { api } from '../services/api';
 import {
   fetchRescueRoute,
   getBrowserGeolocation,
+  calculateHaversineDistance,
   RESCUE_BASE_COORDINATES,
   RESCUE_BASE_LABEL,
   RescueRoute,
@@ -109,6 +119,31 @@ const createOriginMarkerIcon = (isBase: boolean) => {
   });
 };
 
+// Live Rescuer vector marker generator
+const createRescuerLiveMarkerIcon = (hasLiveGps: boolean) => {
+  const color = hasLiveGps ? '#0284C7' : '#5D6F89';
+  const pulse = hasLiveGps
+    ? `<span style="position:absolute; inset:-6px; border-radius:50%; background-color:#38BDF8; opacity:0.45; animation:ping 1.4s cubic-bezier(0,0,0.2,1) infinite;"></span>`
+    : '';
+
+  return L.divIcon({
+    className: 'custom-rescuer-live-marker',
+    html: `
+      <div style="position:relative; width:40px; height:40px; display:flex; align-items:center; justify-content:center;">
+        ${pulse}
+        <div style="width:32px; height:32px; border-radius:50%; background-color:${color}; border:3.5px solid #FFFFFF; box-shadow:0 3px 12px rgba(2,132,199,0.55); display:flex; align-items:center; justify-content:center; color:#FFFFFF;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="12 2 19 21 12 17 5 21 12 2"/>
+          </svg>
+        </div>
+      </div>
+    `,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    popupAnchor: [0, -22],
+  });
+};
+
 // Default map center: Nagpur, Maharashtra, India (PRD & Operator Command Post)
 export const NAGPUR_CENTER: [number, number] = [21.1458, 79.0882];
 export const DEFAULT_CITY_ZOOM = 12;
@@ -123,6 +158,9 @@ interface MapControllerProps {
   fitRouteTrigger: number;
   onTileError: () => void;
   onZoomChange: (zoom: number) => void;
+  isNavigating: boolean;
+  navCurrentPosition: [number, number] | null;
+  navAutoCenter: boolean;
 }
 
 const MapController: React.FC<MapControllerProps> = ({
@@ -134,6 +172,9 @@ const MapController: React.FC<MapControllerProps> = ({
   fitRouteTrigger,
   onTileError,
   onZoomChange,
+  isNavigating,
+  navCurrentPosition,
+  navAutoCenter,
 }) => {
   const map = useMap();
 
@@ -209,9 +250,19 @@ const MapController: React.FC<MapControllerProps> = ({
     }
   }, [map, activeRescueRoute, fitRouteTrigger]);
 
+  // Follow rescuer's live position during active navigation
+  useEffect(() => {
+    if (isNavigating && navCurrentPosition && navAutoCenter) {
+      map.panTo(navCurrentPosition, {
+        animate: true,
+        duration: 0.6,
+      });
+    }
+  }, [map, isNavigating, navCurrentPosition, navAutoCenter]);
+
   // Pan to selected incident when selection changes and no active route is being framed
   useEffect(() => {
-    if (activeRescueRoute) return; // Keep route framing prioritized
+    if (activeRescueRoute || isNavigating) return; // Keep route framing / navigation prioritized
     if (!selectedIncident?.location_geo) return;
     const { latitude, longitude } = selectedIncident.location_geo;
     if (latitude !== null && longitude !== null) {
@@ -219,7 +270,7 @@ const MapController: React.FC<MapControllerProps> = ({
         duration: 1.0,
       });
     }
-  }, [map, selectedIncident, activeRescueRoute]);
+  }, [map, selectedIncident, activeRescueRoute, isNavigating]);
 
   return null;
 };
@@ -237,6 +288,132 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
   const [routingErrorNotice, setRoutingErrorNotice] = useState<string | null>(null);
   const [showRouteSteps, setShowRouteSteps] = useState(false);
   const [fitRouteTrigger, setFitRouteTrigger] = useState(0);
+
+  // Active Live Navigation State
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [navCurrentPosition, setNavCurrentPosition] = useState<[number, number] | null>(null);
+  const [navAccuracyMeters, setNavAccuracyMeters] = useState<number | null>(null);
+  const [navHeading, setNavHeading] = useState<number | null>(null);
+  const [navSpeedKmh, setNavSpeedKmh] = useState<number | null>(null);
+  const [navDistanceRemainingMeters, setNavDistanceRemainingMeters] = useState<number | null>(null);
+  const [navHasArrived, setNavHasArrived] = useState(false);
+  const [navGpsError, setNavGpsError] = useState<string | null>(null);
+  const [navAutoCenter, setNavAutoCenter] = useState(true);
+  const [navStepIndex, setNavStepIndex] = useState(0);
+  const [isRoutePanelMinimized, setIsRoutePanelMinimized] = useState(false);
+
+  const watchIdRef = React.useRef<number | null>(null);
+
+  const stopLiveTracking = () => {
+    if (watchIdRef.current !== null && typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+  };
+
+  // Cleanup geolocation watch on component unmount
+  useEffect(() => {
+    return () => {
+      stopLiveTracking();
+    };
+  }, []);
+
+  const handleStartNavigation = () => {
+    if (!activeRescueRoute) return;
+
+    setIsNavigating(true);
+    setIsRoutePanelMinimized(false);
+    setNavHasArrived(false);
+    setNavGpsError(null);
+    setNavStepIndex(0);
+    setNavAutoCenter(true);
+
+    const destCoord = activeRescueRoute.destination;
+    setNavDistanceRemainingMeters(activeRescueRoute.distanceKm * 1000);
+
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setNavGpsError('Geolocation is not supported by this browser. Displaying planned static route.');
+      setNavCurrentPosition(activeRescueRoute.origin);
+      return;
+    }
+
+    try {
+      const id = navigator.geolocation.watchPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const posTuple: [number, number] = [lat, lon];
+
+          setNavCurrentPosition(posTuple);
+          setNavAccuracyMeters(pos.coords.accuracy || null);
+          setNavHeading(pos.coords.heading || null);
+          if (pos.coords.speed !== null && !isNaN(pos.coords.speed)) {
+            setNavSpeedKmh(Math.round(pos.coords.speed * 3.6));
+          } else {
+            setNavSpeedKmh(null);
+          }
+          setNavGpsError(null);
+
+          // Calculate remaining straight-line distance to destination
+          const remainingM = Math.round(calculateHaversineDistance(posTuple, destCoord) * 1000);
+          setNavDistanceRemainingMeters(remainingM);
+
+          // Check arrival threshold (within 45 meters)
+          if (remainingM <= 45) {
+            setNavHasArrived(true);
+          }
+
+          // Advance step index along route
+          if (activeRescueRoute.steps && activeRescueRoute.steps.length > 0) {
+            const totalDistM = activeRescueRoute.distanceKm * 1000;
+            const progressRatio = Math.max(0, Math.min(1, 1 - remainingM / (totalDistM || 1)));
+            let running = 0;
+            let activeIdx = 0;
+            for (let i = 0; i < activeRescueRoute.steps.length; i++) {
+              running += activeRescueRoute.steps[i].distanceMeters;
+              if (running >= progressRatio * totalDistM) {
+                activeIdx = i;
+                break;
+              }
+            }
+            setNavStepIndex(activeIdx);
+          }
+        },
+        (err) => {
+          console.warn('Live navigation geolocation error:', err);
+          let message = 'Live GPS unavailable.';
+          if (err.code === err.PERMISSION_DENIED) {
+            message = 'Location permission was denied. Displaying static route from origin without live movement tracking.';
+          } else if (err.code === err.POSITION_UNAVAILABLE) {
+            message = 'GPS signal unavailable. Displaying static route from origin.';
+          } else if (err.code === err.TIMEOUT) {
+            message = 'GPS request timed out. Displaying static route from origin.';
+          }
+          setNavGpsError(message);
+          setNavCurrentPosition(activeRescueRoute.origin);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 3000,
+        }
+      );
+      watchIdRef.current = id;
+    } catch (e: any) {
+      console.warn('Geolocation invocation error:', e);
+      setNavGpsError('Could not initialize geolocation sensor. Displaying static route.');
+      setNavCurrentPosition(activeRescueRoute.origin);
+    }
+  };
+
+  const handleStopNavigation = () => {
+    stopLiveTracking();
+    setIsNavigating(false);
+    setNavCurrentPosition(null);
+    setNavGpsError(null);
+    setNavHasArrived(false);
+    setFitRouteTrigger((prev) => prev + 1);
+  };
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -365,15 +542,18 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
     );
 
     setActiveRescueRoute(route);
+    setIsRoutePanelMinimized(false);
     setIsCalculatingRoute(false);
     setFitRouteTrigger((prev) => prev + 1);
   };
 
   // Clear route and return to overall all-incidents map view
   const handleClearRescueRoute = () => {
+    handleStopNavigation();
     setActiveRescueRoute(null);
     setRoutingErrorNotice(null);
     setShowRouteSteps(false);
+    setIsRoutePanelMinimized(false);
   };
 
   // Switch origin between Browser GPS and Nagpur Rescue Base
@@ -592,6 +772,9 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
                 fitRouteTrigger={fitRouteTrigger}
                 onTileError={() => setTilesUnavailable(true)}
                 onZoomChange={(z) => setZoomLevel(z)}
+                isNavigating={isNavigating}
+                navCurrentPosition={navCurrentPosition}
+                navAutoCenter={navAutoCenter}
               />
 
               {/* Render route polyline if an incident route is active */}
@@ -602,8 +785,8 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
                     positions={activeRescueRoute.coordinates}
                     pathOptions={{
                       color: '#ffffff',
-                      weight: 7,
-                      opacity: 0.9,
+                      weight: isNavigating ? 8 : 7,
+                      opacity: 0.95,
                       lineCap: 'round',
                       lineJoin: 'round',
                     }}
@@ -612,9 +795,9 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
                   <Polyline
                     positions={activeRescueRoute.coordinates}
                     pathOptions={{
-                      color: activeRescueRoute.status === 'ERROR' ? '#D98A00' : '#1685D1',
-                      weight: 4.5,
-                      opacity: 0.95,
+                      color: isNavigating ? '#0284C7' : activeRescueRoute.status === 'ERROR' ? '#D98A00' : '#1685D1',
+                      weight: isNavigating ? 5.5 : 4.5,
+                      opacity: 0.98,
                       dashArray: activeRescueRoute.status === 'ERROR' ? '8, 8' : undefined,
                       lineCap: 'round',
                       lineJoin: 'round',
@@ -635,6 +818,56 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
                       </div>
                     </Popup>
                   </Marker>
+
+                  {/* Rescuer Live Position Marker & Accuracy Halo (When Navigating) */}
+                  {isNavigating && navCurrentPosition && (
+                    <>
+                      {navAccuracyMeters && navAccuracyMeters <= 250 && !navGpsError && (
+                        <Circle
+                          center={navCurrentPosition}
+                          radius={navAccuracyMeters}
+                          pathOptions={{
+                            color: '#0284C7',
+                            fillColor: '#38BDF8',
+                            fillOpacity: 0.15,
+                            weight: 1.5,
+                            dashArray: '4, 4',
+                          }}
+                        />
+                      )}
+                      <Marker
+                        position={navCurrentPosition}
+                        icon={createRescuerLiveMarkerIcon(!navGpsError)}
+                        zIndexOffset={1000}
+                      >
+                        <Popup>
+                          <div className="p-2.5 text-[12px] font-mono">
+                            <span className="font-bold text-[#0284C7] block">
+                              {navGpsError ? 'Planned Route Origin (Live GPS Offline)' : 'Rescuer Current Position'}
+                            </span>
+                            <span className="text-[#5D6F89]">
+                              {navCurrentPosition[0].toFixed(5)}, {navCurrentPosition[1].toFixed(5)}
+                            </span>
+                            {navAccuracyMeters && !navGpsError && (
+                              <span className="block text-[11px] text-[#0B9B73] mt-0.5">
+                                GPS Accuracy: ±{Math.round(navAccuracyMeters)}m
+                              </span>
+                            )}
+                            {navSpeedKmh !== null && (
+                              <span className="block text-[11px] text-[#17243A] font-bold">
+                                Speed: {navSpeedKmh} km/h
+                              </span>
+                            )}
+                            {navHeading !== null && !isNaN(navHeading) && (
+                              <span className="block text-[10px] text-[#5D6F89]">
+                                Bearing: {Math.round(navHeading)}°
+                              </span>
+                            )}
+                          </div>
+                        </Popup>
+                      </Marker>
+                    </>
+                  )}
                 </>
               )}
 
@@ -707,6 +940,34 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
                             <span>{isRoutedDestination ? 'Active Route' : 'Rescue Path'}</span>
                           </button>
 
+                          {isRoutedDestination && (
+                            <button
+                              onClick={() => {
+                                if (isNavigating) {
+                                  handleStopNavigation();
+                                } else {
+                                  handleStartNavigation();
+                                }
+                              }}
+                              className={`py-1.5 px-2.5 rounded-lg text-white font-semibold text-[12px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
+                                isNavigating ? 'bg-red-600 hover:bg-red-700' : 'bg-[#0B9B73] hover:bg-[#09805F]'
+                              }`}
+                              title={isNavigating ? 'Stop active navigation' : 'Start live turn-by-turn navigation'}
+                            >
+                              {isNavigating ? (
+                                <>
+                                  <Square className="w-3 h-3 fill-current" />
+                                  <span>Stop</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Navigation className="w-3 h-3 fill-current" />
+                                  <span>Start</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+
                           <button
                             onClick={() => setSelectedIncident(incident)}
                             className="py-1.5 px-2.5 rounded-lg bg-[#17243A] hover:bg-[#20314A] text-white font-semibold text-[12px] transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs"
@@ -733,71 +994,144 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
               <span className="text-[#0B9B73] font-semibold">{mappedIncidents.length} GPS Mapped</span>
             </div>
 
-            {/* Map Overlay: Active Rescue Route Information Panel */}
-            {activeRescueRoute && (
-              <div className="absolute top-12 left-3 right-3 sm:right-auto sm:max-w-md z-[400] bg-white/95 backdrop-blur-md rounded-xl border border-[#BFDBFE] p-4 shadow-lg text-[#17243A]">
-                <div className="flex items-center justify-between border-b border-[#DCE6F1] pb-2.5 mb-2.5">
+            {/* Map Overlay: Minimized Floating Pill (Top-Right Corner) */}
+            {activeRescueRoute && isRoutePanelMinimized && (
+              <div className="absolute top-3 right-3 z-[400] flex items-center gap-2 bg-white/95 backdrop-blur-md border border-[#BFDBFE] rounded-xl px-3 py-1.5 shadow-md text-[12px] font-mono text-[#17243A]">
+                <Route className="w-4 h-4 text-[#1685D1] shrink-0" />
+                <span className="font-bold">{activeRescueRoute.incidentId}</span>
+                <span className="text-[#5D6F89] text-[11px]">
+                  {isNavigating && navDistanceRemainingMeters !== null
+                    ? navDistanceRemainingMeters >= 1000
+                      ? `${(navDistanceRemainingMeters / 1000).toFixed(1)}km`
+                      : `${navDistanceRemainingMeters}m`
+                    : `${activeRescueRoute.distanceKm}km`}
+                </span>
+
+                {!isNavigating ? (
+                  <button
+                    onClick={handleStartNavigation}
+                    className="px-2 py-0.5 rounded bg-[#1685D1] hover:bg-[#1270B0] text-white font-sans font-semibold text-[11px] flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                    title="Start live navigation"
+                  >
+                    <Navigation className="w-3 h-3 fill-current" />
+                    <span>Start</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleStopNavigation}
+                    className="px-2 py-0.5 rounded bg-red-600 hover:bg-red-700 text-white font-sans font-semibold text-[11px] flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                    title="Stop navigation (keeps blue route line)"
+                  >
+                    <Square className="w-2.5 h-2.5 fill-current" />
+                    <span>Stop</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setIsRoutePanelMinimized(false)}
+                  className="p-1 text-[#5D6F89] hover:text-[#17243A] hover:bg-[#F3F7FC] rounded transition-colors cursor-pointer"
+                  title="Expand Route Panel"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  onClick={handleClearRescueRoute}
+                  className="p-1 text-[#5D6F89] hover:text-red-600 hover:bg-[#F3F7FC] rounded transition-colors cursor-pointer"
+                  title="Clear Route Lines from Map"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Map Overlay: Active Rescue Route Information Panel (Top-Right Corner Docked) */}
+            {activeRescueRoute && !isNavigating && !isRoutePanelMinimized && (
+              <div className="absolute top-3 right-3 z-[400] w-[calc(100%-24px)] sm:w-[350px] max-w-full bg-white/95 backdrop-blur-md rounded-xl border border-[#BFDBFE] p-3.5 shadow-lg text-[#17243A]">
+                <div className="flex items-center justify-between border-b border-[#DCE6F1] pb-2 mb-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-[#1685D1]">
-                      <Route className="w-4 h-4" />
+                    <div className="w-6 h-6 rounded-lg bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-[#1685D1]">
+                      <Route className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-[14px] text-[#17243A]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-[13px] text-[#17243A]">
                           Route to {activeRescueRoute.incidentId}
                         </span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded font-bold bg-[#ECFDF5] text-[#0B9B73] border border-[#A7F3D0]">
+                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded font-bold bg-[#ECFDF5] text-[#0B9B73] border border-[#A7F3D0]">
                           LIVE PATH
                         </span>
                       </div>
-                      <span className="text-[11px] text-[#5D6F89] block">
+                      <span className="text-[10px] text-[#5D6F89] block truncate max-w-[180px]">
                         From: {activeRescueRoute.originLabel}
                       </span>
                     </div>
                   </div>
 
-                  <button
-                    onClick={handleClearRescueRoute}
-                    className="p-1 rounded-lg text-[#5D6F89] hover:text-[#17243A] hover:bg-[#F3F7FC] transition-colors cursor-pointer"
-                    title="Clear Route / Back to All Incidents"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                  {/* Header actions: Minimize & Close panel (preserves route on map) */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setIsRoutePanelMinimized(true)}
+                      className="p-1 rounded-md text-[#5D6F89] hover:text-[#17243A] hover:bg-[#F3F7FC] transition-colors cursor-pointer"
+                      title="Minimize panel (keeps blue route line visible on map)"
+                    >
+                      <Minimize2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setIsRoutePanelMinimized(true)}
+                      className="p-1 rounded-md text-[#5D6F89] hover:text-[#17243A] hover:bg-[#F3F7FC] transition-colors cursor-pointer"
+                      title="Close panel (keeps blue route line visible on map)"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Metrics: Road Distance & Est. Drive Time */}
-                <div className="grid grid-cols-2 gap-2 text-center mb-2.5">
-                  <div className="bg-[#F8FAFC] border border-[#DCE6F1] rounded-lg p-2">
+                <div className="grid grid-cols-2 gap-2 text-center mb-2">
+                  <div className="bg-[#F8FAFC] border border-[#DCE6F1] rounded-lg p-1.5">
                     <span className="text-[10px] font-mono uppercase text-[#5D6F89] block">Road Distance</span>
-                    <span className="text-[17px] font-mono font-extrabold text-[#1685D1]">
+                    <span className="text-[15px] font-mono font-extrabold text-[#1685D1]">
                       {activeRescueRoute.distanceKm} km
                     </span>
                   </div>
-                  <div className="bg-[#F8FAFC] border border-[#DCE6F1] rounded-lg p-2">
+                  <div className="bg-[#F8FAFC] border border-[#DCE6F1] rounded-lg p-1.5">
                     <span className="text-[10px] font-mono uppercase text-[#5D6F89] block">Est. Drive Time</span>
-                    <span className="text-[17px] font-mono font-extrabold text-[#0B9B73]">
+                    <span className="text-[15px] font-mono font-extrabold text-[#0B9B73]">
                       {activeRescueRoute.durationMinutes > 0 ? `~${activeRescueRoute.durationMinutes} min` : 'Direct Bearing'}
                     </span>
                   </div>
                 </div>
 
+                {/* Prominent Start Navigation Button */}
+                <div className="mb-2">
+                  <button
+                    onClick={handleStartNavigation}
+                    className="w-full py-2 px-3 rounded-lg bg-[#1685D1] hover:bg-[#1270B0] text-white font-bold text-[12px] flex items-center justify-center gap-2 shadow-xs hover:shadow-sm transition-all cursor-pointer active:scale-[0.99]"
+                    title="Enter active live navigation mode along this route"
+                  >
+                    <Navigation className="w-3.5 h-3.5 fill-current" />
+                    <span>Start Navigation</span>
+                  </button>
+                </div>
+
                 {/* Fallback Notice if routing service had network issues */}
                 {activeRescueRoute.status === 'ERROR' && (
-                  <div className="mb-2.5 p-2 rounded-lg bg-[#FEF8ED] border border-[#FDE8BF] text-[11px] text-[#D98A00] flex items-center gap-2">
-                    <AlertTriangle className="w-3.5 h-3.5 text-[#D98A00] shrink-0" />
-                    <span>{activeRescueRoute.errorMessage}</span>
+                  <div className="mb-2 p-1.5 rounded-lg bg-[#FEF8ED] border border-[#FDE8BF] text-[10px] text-[#D98A00] flex items-center gap-1.5">
+                    <AlertTriangle className="w-3 h-3 text-[#D98A00] shrink-0" />
+                    <span className="line-clamp-2">{activeRescueRoute.errorMessage}</span>
                   </div>
                 )}
 
                 {/* Origin Selector: Toggle between Browser GPS and Nagpur Base */}
-                <div className="flex items-center justify-between text-[11px] font-mono pt-2 border-t border-[#DCE6F1]">
-                  <span className="text-[#5D6F89]">Origin Point:</span>
+                <div className="flex items-center justify-between text-[10px] font-mono pt-1.5 border-t border-[#DCE6F1]">
+                  <span className="text-[#5D6F89]">Origin:</span>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleSwitchOrigin('AUTO')}
-                      className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
                         activeRescueRoute.originType === 'BROWSER_GPS'
-                          ? 'bg-[#1685D1] text-white shadow-xs'
+                          ? 'bg-[#1685D1] text-white shadow-2xs'
                           : 'bg-[#F3F7FC] text-[#5D6F89] hover:text-[#17243A] border border-[#DCE6F1]'
                       }`}
                     >
@@ -805,9 +1139,9 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
                     </button>
                     <button
                       onClick={() => handleSwitchOrigin('BASE')}
-                      className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
                         activeRescueRoute.originType === 'RESCUE_BASE'
-                          ? 'bg-[#17243A] text-white shadow-xs'
+                          ? 'bg-[#17243A] text-white shadow-2xs'
                           : 'bg-[#F3F7FC] text-[#5D6F89] hover:text-[#17243A] border border-[#DCE6F1]'
                       }`}
                     >
@@ -818,22 +1152,22 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
 
                 {/* Turn-by-Turn Collapsible Directions */}
                 {activeRescueRoute.steps && activeRescueRoute.steps.length > 0 && (
-                  <div className="mt-2.5 pt-2 border-t border-[#DCE6F1]">
+                  <div className="mt-2 pt-1.5 border-t border-[#DCE6F1]">
                     <button
                       onClick={() => setShowRouteSteps(!showRouteSteps)}
-                      className="w-full flex items-center justify-between text-[11px] font-semibold text-[#1685D1] hover:underline cursor-pointer"
+                      className="w-full flex items-center justify-between text-[10px] font-semibold text-[#1685D1] hover:underline cursor-pointer"
                     >
                       <span>{showRouteSteps ? 'Hide Directions' : `Show Turn-by-Turn (${activeRescueRoute.steps.length} maneuvers)`}</span>
                       <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showRouteSteps ? 'rotate-180' : ''}`} />
                     </button>
 
                     {showRouteSteps && (
-                      <div className="mt-2 max-h-36 overflow-y-auto space-y-1 pr-1 text-[11px] text-[#17243A]">
+                      <div className="mt-1.5 max-h-28 overflow-y-auto space-y-1 pr-1 text-[10px] text-[#17243A]">
                         {activeRescueRoute.steps.map((st, idx) => (
-                          <div key={idx} className="flex items-start justify-between gap-2 p-1.5 rounded bg-[#F8FAFC] border border-[#E2E8F0]">
+                          <div key={idx} className="flex items-start justify-between gap-1.5 p-1 rounded bg-[#F8FAFC] border border-[#E2E8F0]">
                             <span className="leading-snug">{idx + 1}. {st.instruction}</span>
                             {st.distanceMeters > 0 && (
-                              <span className="font-mono text-[#5D6F89] shrink-0 text-[10px]">
+                              <span className="font-mono text-[#5D6F89] shrink-0 text-[9px]">
                                 {st.distanceMeters >= 1000 ? `${(st.distanceMeters / 1000).toFixed(1)}km` : `${st.distanceMeters}m`}
                               </span>
                             )}
@@ -845,22 +1179,210 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
                 )}
 
                 {/* Bottom Route Controls */}
-                <div className="mt-3 pt-2.5 border-t border-[#DCE6F1] flex items-center justify-between">
+                <div className="mt-2 pt-1.5 border-t border-[#DCE6F1] flex items-center justify-between text-[11px]">
                   <button
                     onClick={() => setFitRouteTrigger((prev) => prev + 1)}
-                    className="text-[11px] font-semibold text-[#1685D1] hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-[#1685D1] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
                   >
-                    <Crosshair className="w-3.5 h-3.5" />
-                    <span>Fit Route Bounds</span>
+                    <Crosshair className="w-3 h-3" />
+                    <span>Fit Bounds</span>
                   </button>
 
                   <button
                     onClick={handleClearRescueRoute}
-                    className="px-2.5 py-1 text-[11px] font-semibold text-[#5D6F89] hover:text-[#17243A] bg-[#F3F7FC] hover:bg-[#E2E8F0] rounded border border-[#DCE6F1] transition-colors cursor-pointer flex items-center gap-1"
+                    className="px-2 py-0.5 text-[10px] font-semibold text-[#5D6F89] hover:text-[#17243A] bg-[#F3F7FC] hover:bg-[#E2E8F0] rounded border border-[#DCE6F1] transition-colors cursor-pointer flex items-center gap-1"
+                    title="Remove route lines from map"
                   >
-                    <RotateCcw className="w-3 h-3" />
+                    <RotateCcw className="w-2.5 h-2.5" />
                     <span>Clear Route</span>
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* Map Overlay: Active Live Navigation HUD (Top-Right Corner Docked) */}
+            {activeRescueRoute && isNavigating && !isRoutePanelMinimized && (
+              <div className="absolute top-3 right-3 z-[400] w-[calc(100%-24px)] sm:w-[360px] max-w-full bg-white/95 backdrop-blur-md rounded-xl border-2 border-[#1685D1] p-3.5 shadow-xl text-[#17243A]">
+                {/* Mode Header with Live Pulse and Stop Button */}
+                <div className="flex items-center justify-between border-b border-[#DCE6F1] pb-2 mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#1685D1]"></span>
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-[12px] uppercase tracking-wide text-[#17243A]">
+                          Navigating
+                        </span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded font-bold bg-[#EFF6FF] text-[#1685D1] border border-[#BFDBFE]">
+                          {activeRescueRoute.incidentId}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-[#5D6F89] block font-mono">
+                        {navGpsError
+                          ? 'GPS Offline (Showing planned route)'
+                          : navCurrentPosition
+                          ? `GPS Active ${navAccuracyMeters ? `(±${Math.round(navAccuracyMeters)}m)` : ''}`
+                          : 'Connecting to GPS...'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Header controls: Stop Navigation & Minimize (both keep blue lines on map) */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={handleStopNavigation}
+                      className="px-2.5 py-1 rounded-md bg-red-600 hover:bg-red-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                      title="Stop active navigation (keeps blue route line on map)"
+                    >
+                      <Square className="w-2.5 h-2.5 fill-current" />
+                      <span>Stop Nav</span>
+                    </button>
+                    <button
+                      onClick={() => setIsRoutePanelMinimized(true)}
+                      className="p-1 rounded-md text-[#5D6F89] hover:text-[#17243A] hover:bg-[#F3F7FC] transition-colors cursor-pointer"
+                      title="Minimize HUD (keeps navigation active)"
+                    >
+                      <Minimize2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={handleStopNavigation}
+                      className="p-1 rounded-md text-[#5D6F89] hover:text-red-600 hover:bg-[#F3F7FC] transition-colors cursor-pointer"
+                      title="Close navigation (keeps blue route line on map)"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Arrival Status Banner */}
+                {navHasArrived && (
+                  <div className="mb-2 p-2 rounded-lg bg-[#ECFDF5] border border-[#A7F3D0] text-[#065F46] flex items-start gap-1.5 shadow-2xs">
+                    <CheckCircle2 className="w-4 h-4 text-[#0B9B73] shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-[11px] block">Arrived at Incident Scene</span>
+                      <span className="text-[10px] leading-snug">
+                        Within on-scene proximity of {activeRescueRoute.incidentId}.
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* GPS Notice / Fallback Banner */}
+                {navGpsError && (
+                  <div className="mb-2 p-1.5 rounded-lg bg-[#FEF8ED] border border-[#FDE8BF] text-[#9A6B00] text-[10px] flex items-start gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-[#D98A00] shrink-0 mt-0.5" />
+                    <div className="leading-snug">{navGpsError}</div>
+                  </div>
+                )}
+
+                {/* Primary Maneuver Guidance Box */}
+                {activeRescueRoute.steps && activeRescueRoute.steps.length > 0 ? (
+                  <div className="mb-2 bg-gradient-to-r from-[#F0F9FF] to-[#E0F2FE] border border-[#BAE6FD] rounded-lg p-2.5">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-7 h-7 rounded-md bg-[#1685D1] text-white flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                        <CornerUpRight className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[9px] font-mono uppercase tracking-wider text-[#0369A1] font-bold block">
+                          Next Maneuver
+                        </span>
+                        <span className="font-semibold text-[12px] text-[#0C4A6E] leading-snug block">
+                          {activeRescueRoute.steps[navStepIndex]?.instruction || 'Proceed along designated route'}
+                        </span>
+                        {activeRescueRoute.steps[navStepIndex]?.distanceMeters > 0 && (
+                          <span className="text-[10px] font-mono text-[#0284C7] font-bold block mt-0.5">
+                            for {activeRescueRoute.steps[navStepIndex].distanceMeters >= 1000
+                              ? `${(activeRescueRoute.steps[navStepIndex].distanceMeters / 1000).toFixed(1)} km`
+                              : `${activeRescueRoute.steps[navStepIndex].distanceMeters} m`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-2 bg-[#F8FAFC] border border-[#DCE6F1] rounded-lg p-2 text-[11px] text-[#5D6F89] flex items-center gap-1.5">
+                    <Compass className="w-3.5 h-3.5 text-[#1685D1]" />
+                    <span>Follow direct bearing line towards incident destination</span>
+                  </div>
+                )}
+
+                {/* Live Navigation Metrics: Remaining Distance, Time, Speed */}
+                <div className="grid grid-cols-3 gap-1.5 text-center mb-2">
+                  <div className="bg-[#F8FAFC] border border-[#DCE6F1] rounded-lg p-1.5">
+                    <span className="text-[9px] font-mono uppercase text-[#5D6F89] block">Remaining</span>
+                    <span className="text-[14px] font-mono font-extrabold text-[#1685D1]">
+                      {navDistanceRemainingMeters !== null
+                        ? navDistanceRemainingMeters >= 1000
+                          ? `${(navDistanceRemainingMeters / 1000).toFixed(1)}km`
+                          : `${navDistanceRemainingMeters}m`
+                        : `${activeRescueRoute.distanceKm}km`}
+                    </span>
+                  </div>
+
+                  <div className="bg-[#F8FAFC] border border-[#DCE6F1] rounded-lg p-1.5">
+                    <span className="text-[9px] font-mono uppercase text-[#5D6F89] block">Est. Time</span>
+                    <span className="text-[14px] font-mono font-extrabold text-[#0B9B73]">
+                      {activeRescueRoute.durationMinutes > 0
+                        ? navDistanceRemainingMeters !== null && activeRescueRoute.distanceKm > 0
+                          ? `~${Math.max(1, Math.round((navDistanceRemainingMeters / (activeRescueRoute.distanceKm * 1000)) * activeRescueRoute.durationMinutes))} min`
+                          : `~${activeRescueRoute.durationMinutes} min`
+                        : 'Bearing'}
+                    </span>
+                  </div>
+
+                  <div className="bg-[#F8FAFC] border border-[#DCE6F1] rounded-lg p-1.5">
+                    <span className="text-[9px] font-mono uppercase text-[#5D6F89] block">Speed</span>
+                    <span className="text-[14px] font-mono font-extrabold text-[#17243A]">
+                      {navSpeedKmh !== null ? `${navSpeedKmh}km/h` : 'Tracking'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Target Incident Context */}
+                {selectedIncident && (
+                  <div className="p-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] mb-2 text-[10px] leading-snug">
+                    <div className="flex items-center justify-between text-[#17243A] font-semibold mb-0.5">
+                      <span className="truncate max-w-[200px]">Target: {selectedIncident.location_manual || 'GPS Destination'}</span>
+                      <PriorityBadge priority={selectedIncident.priority_tier} />
+                    </div>
+                    <div className="text-[#5D6F89] flex items-center justify-between text-[9px]">
+                      <span>Headcount: {selectedIncident.headcount} {selectedIncident.headcount === 1 ? 'person' : 'people'}</span>
+                      <span className="capitalize">{selectedIncident.category.replace(/_/g, ' ').toLowerCase()}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Navigation Map Controls */}
+                <div className="flex items-center justify-between pt-1.5 border-t border-[#DCE6F1] text-[10px]">
+                  <button
+                    onClick={() => setNavAutoCenter(!navAutoCenter)}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded font-semibold transition-colors cursor-pointer ${
+                      navAutoCenter
+                        ? 'bg-[#1685D1] text-white shadow-2xs'
+                        : 'bg-[#F3F7FC] text-[#5D6F89] hover:text-[#17243A] border border-[#DCE6F1]'
+                    }`}
+                    title="Toggle automatic map following as your position updates"
+                  >
+                    <LocateFixed className="w-3 h-3" />
+                    <span>{navAutoCenter ? 'Auto-Following' : 'Follow Off'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setFitRouteTrigger((prev) => prev + 1)}
+                    className="text-[#1685D1] hover:underline font-semibold cursor-pointer"
+                  >
+                    Fit Route
+                  </button>
+                </div>
+
+                {/* Truthful Operational Disclaimer */}
+                <div className="mt-1.5 pt-1.5 border-t border-[#DCE6F1] flex items-start gap-1 text-[9px] text-[#5D6F89] leading-tight">
+                  <ShieldAlert className="w-3 h-3 text-[#D98A00] shrink-0 mt-0.5" />
+                  <span>
+                    Navigation aid for rescue teams — not a guarantee of safe passage.
+                  </span>
                 </div>
               </div>
             )}
@@ -1048,22 +1570,55 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
 
                       <div className="flex items-center gap-1.5">
                         {hasGps ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewRescuePath(incident);
-                            }}
-                            disabled={isCalculatingRoute && isRouted}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
-                              isRouted
-                                ? 'bg-[#1685D1] text-white shadow-xs'
-                                : 'bg-[#EFF6FF] text-[#1685D1] hover:bg-[#DBEAFE] border border-[#BFDBFE]'
-                            }`}
-                            title="Calculate road rescue route"
-                          >
-                            <Route className="w-3.5 h-3.5" />
-                            <span>{isRouted ? 'Route Active' : 'View Path'}</span>
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewRescuePath(incident);
+                              }}
+                              disabled={isCalculatingRoute && isRouted}
+                              className={`px-2 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                                isRouted
+                                  ? 'bg-[#1685D1] text-white shadow-xs'
+                                  : 'bg-[#EFF6FF] text-[#1685D1] hover:bg-[#DBEAFE] border border-[#BFDBFE]'
+                              }`}
+                              title={isRouted ? 'Rescue route is active' : 'Calculate road rescue route'}
+                            >
+                              <Route className="w-3.5 h-3.5" />
+                              <span>{isRouted ? 'Route Active' : 'View Path'}</span>
+                            </button>
+
+                            {isRouted && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isNavigating) {
+                                    handleStopNavigation();
+                                  } else {
+                                    handleStartNavigation();
+                                  }
+                                }}
+                                className={`px-2 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer text-white shadow-xs ${
+                                  isNavigating
+                                    ? 'bg-red-600 hover:bg-red-700'
+                                    : 'bg-[#0B9B73] hover:bg-[#09805F]'
+                                }`}
+                                title={isNavigating ? 'Stop active navigation' : 'Start live turn-by-turn navigation'}
+                              >
+                                {isNavigating ? (
+                                  <>
+                                    <Square className="w-3 h-3 fill-current" />
+                                    <span>Stop Nav</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Navigation className="w-3 h-3 fill-current" />
+                                    <span>Start Nav</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <span
                             className="px-2 py-0.5 rounded text-[10px] font-mono text-[#D98A00] bg-[#FEF8ED] border border-[#FDE8BF]"

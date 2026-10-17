@@ -21,7 +21,6 @@ import {
 } from '../types';
 import { api } from '../services/api';
 import {
-  PriorityBadge,
   IncidentStatusBadge,
   DeliveryBadge,
 } from '../components/StatusBadges';
@@ -267,19 +266,18 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({ onNavigate }) => {
             <table className="w-full text-left border-collapse text-[13px] sm:text-[14px]">
               <thead>
                 <tr className="bg-[#F8FAFC] border-b border-[#DCE6F1] text-[12px] font-semibold uppercase tracking-wider text-[#5D6F89]">
-                  <th className="py-3.5 px-3 sm:px-4 whitespace-nowrap">Incident ID & Time</th>
-                  <th className="py-3.5 px-3 sm:px-4 whitespace-nowrap">Priority / Type</th>
-                  <th className="py-3.5 px-3 sm:px-4 min-w-[160px]">Reported Location</th>
-                  <th className="py-3.5 px-3 sm:px-4 min-w-[180px]">People & Situation</th>
-                  <th className="py-3.5 px-3 sm:px-4 whitespace-nowrap">Lifecycle Status</th>
-                  <th className="py-3.5 px-3 sm:px-4 whitespace-nowrap">Delivery State</th>
-                  <th className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap">Actions</th>
+                  <th className="py-3.5 px-3 sm:px-4 whitespace-nowrap min-w-[140px]">Incident ID & Time</th>
+                  <th className="py-3.5 px-3 sm:px-4 min-w-[180px]">Reported Location</th>
+                  <th className="py-3.5 px-3 sm:px-4 min-w-[200px]">People & Situation</th>
+                  <th className="py-3.5 px-3 sm:px-4 min-w-[170px]">Lifecycle Status</th>
+                  <th className="py-3.5 px-3 sm:px-4 min-w-[140px] whitespace-nowrap">Delivery State</th>
+                  <th className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap min-w-[110px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#DCE6F1]">
                 {filteredIncidents.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-[#5D6F89]">
+                    <td colSpan={6} className="py-12 text-center text-[#5D6F89]">
                       <AlertTriangle className="w-8 h-8 text-[#D98A00] mx-auto mb-2" />
                       <p className="font-semibold text-[#17243A]">No matching incidents found</p>
                       <p className="text-[13px] text-[#5D6F89] mt-0.5">
@@ -299,24 +297,17 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({ onNavigate }) => {
                           isCritical ? 'bg-[#FDF2F2]/30' : ''
                         }`}
                       >
-                        {/* ID & Time */}
-                        <td className="py-3.5 px-4 align-top">
+                        {/* ID & Time with Type Tag */}
+                        <td className="py-3.5 px-3 sm:px-4 align-top whitespace-nowrap">
                           <span className="font-bold text-[#17243A] block font-mono text-[13px]">
                             {incident.id}
                           </span>
-                          <div className="flex items-center gap-1.5 text-[12px] text-[#5D6F89] mt-1">
+                          <span className="inline-block text-[11px] font-semibold text-[#5D6F89] bg-[#F3F7FC] px-1.5 py-0.5 rounded border border-[#DCE6F1] capitalize mt-1">
+                            {incident.category.replace(/_/g, ' ').toLowerCase()}
+                          </span>
+                          <div className="flex items-center gap-1.5 text-[11px] text-[#5D6F89] mt-1.5">
                             <Clock className="w-3.5 h-3.5 text-[#5D6F89] shrink-0" />
                             <span>{new Date(incident.created_at || (incident as any).received_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-                          </div>
-                        </td>
-
-                        {/* Priority & Category */}
-                        <td className="py-3.5 px-4 align-top">
-                          <div className="flex flex-col gap-1.5 items-start">
-                            <PriorityBadge priority={incident.priority_tier} />
-                            <span className="text-[12px] font-semibold text-[#5D6F89] capitalize">
-                              {incident.category.replace(/_/g, ' ').toLowerCase()}
-                            </span>
                           </div>
                         </td>
 
@@ -357,20 +348,22 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({ onNavigate }) => {
                           </p>
                         </td>
 
-                        {/* Status */}
-                        <td className="py-3.5 px-3 sm:px-4 align-top whitespace-nowrap">
-                          <IncidentStatusBadge status={incident.status} />
+                        {/* Lifecycle Status - Text wraps cleanly without colliding with Delivery State */}
+                        <td className="py-3.5 px-3 sm:px-4 align-top min-w-[170px]">
+                          <div>
+                            <IncidentStatusBadge status={incident.status} />
+                          </div>
                           {incident.operator_notes && (
-                            <span className="block text-[11px] text-[#5D6F89] italic mt-1 break-words max-w-[180px]">
+                            <p className="text-[11px] text-[#5D6F89] italic mt-1.5 leading-snug whitespace-normal break-words max-w-[210px]">
                               "{incident.operator_notes}"
-                            </span>
+                            </p>
                           )}
                         </td>
 
-                        {/* Delivery State */}
-                        <td className="py-3.5 px-3 sm:px-4 align-top whitespace-nowrap">
+                        {/* Delivery State - Isolated and consistently styled */}
+                        <td className="py-3.5 px-3 sm:px-4 align-top min-w-[140px] whitespace-nowrap">
                           <DeliveryBadge state={incident.delivery_state} />
-                          <span className="block text-[11px] text-[#5D6F89] mt-0.5">
+                          <span className="block text-[11px] text-[#5D6F89] mt-1 font-mono">
                             Local NVMe
                           </span>
                         </td>
