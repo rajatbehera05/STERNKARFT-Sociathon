@@ -3,6 +3,7 @@ import { AppRoute } from './types';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
 import { HowItWorks } from './components/HowItWorks';
+import { SystemFeatures } from './components/SystemFeatures';
 import { EverySecondMatters } from './components/EverySecondMatters';
 import { EmergencyInstructions } from './components/EmergencyInstructions';
 import { Footer } from './components/Footer';
@@ -16,6 +17,7 @@ import { IncidentsPage } from './pages/IncidentsPage';
 import { MapPage } from './pages/MapPage';
 import { CommunicationsPage } from './pages/CommunicationsPage';
 import { DeviceStatusPage } from './pages/DeviceStatusPage';
+import { ReliefCoordinationPage } from './pages/ReliefCoordinationPage';
 import {
   TopographicLinesLeft,
   TopographicLinesRight,
@@ -33,6 +35,7 @@ export const App: React.FC = () => {
     if (path === '/rescue/map' || path === '/map') return '/rescue/map';
     if (path === '/rescue/communications') return '/rescue/communications';
     if (path === '/rescue/devices') return '/rescue/devices';
+    if (path === '/rescue/relief' || path === '/relief') return '/rescue/relief';
     return '/';
   });
 
@@ -57,6 +60,7 @@ export const App: React.FC = () => {
       else if (path === '/rescue/map' || path === '/map') setCurrentRoute('/rescue/map');
       else if (path === '/rescue/communications') setCurrentRoute('/rescue/communications');
       else if (path === '/rescue/devices') setCurrentRoute('/rescue/devices');
+      else if (path === '/rescue/relief' || path === '/relief') setCurrentRoute('/rescue/relief');
       else setCurrentRoute('/');
     };
 
@@ -74,13 +78,15 @@ export const App: React.FC = () => {
     return <FloodDashboardPage onNavigate={handleNavigate} />;
   }
 
-  // 2. Rescue Communication Workspace Routes (`/rescue/*`)
+  // 2. Rescue Communication Workspace Routes (`/rescue/*` and `/relief`)
   const isRescueWorkspace =
     currentRoute === '/rescue/dashboard' ||
     currentRoute === '/rescue/incidents' ||
     currentRoute === '/rescue/map' ||
     currentRoute === '/rescue/communications' ||
     currentRoute === '/rescue/devices' ||
+    currentRoute === '/rescue/relief' ||
+    currentRoute === '/relief' ||
     currentRoute === '/map' ||
     currentRoute === '/incidents';
 
@@ -91,6 +97,8 @@ export const App: React.FC = () => {
         ? '/rescue/incidents'
         : currentRoute === '/map'
         ? '/rescue/map'
+        : currentRoute === '/relief'
+        ? '/rescue/relief'
         : currentRoute;
 
     let pageTitle = 'Rescue Operations Overview';
@@ -108,6 +116,9 @@ export const App: React.FC = () => {
     } else if (activeWorkspaceRoute === '/rescue/devices') {
       pageTitle = 'Gateway & Device Status';
       pageSubtitle = 'Diagnostic health telemetry for local backend, ESP32 gateway link, and hardware storage.';
+    } else if (activeWorkspaceRoute === '/rescue/relief') {
+      pageTitle = 'Relief Request & Coordination Dashboard';
+      pageSubtitle = 'Real-time Nagpur map triage, verified emergency intake, and request-to-resource matching.';
     }
 
     return (
@@ -131,6 +142,9 @@ export const App: React.FC = () => {
         )}
         {activeWorkspaceRoute === '/rescue/devices' && (
           <DeviceStatusPage onNavigate={handleNavigate} />
+        )}
+        {activeWorkspaceRoute === '/rescue/relief' && (
+          <ReliefCoordinationPage onNavigate={handleNavigate} />
         )}
       </RescueLayout>
     );
@@ -168,13 +182,16 @@ export const App: React.FC = () => {
               {/* 1. Rescue Hero */}
               <HeroSection onNavigate={handleNavigate} />
 
-              {/* 2. Smoothly blended "From SOS to Rescue" section */}
+              {/* 2. System Features & Core Capabilities (Refined Card Architecture) */}
+              <SystemFeatures />
+
+              {/* 3. Smoothly blended "From SOS to Rescue" section */}
               <HowItWorks />
 
-              {/* 3. Sequential Cinematic Storytelling: Every Second Matters */}
+              {/* 4. Sequential Cinematic Storytelling: Every Second Matters */}
               <EverySecondMatters onNavigate={handleNavigate} />
 
-              {/* 4. "Quick Emergency Instructions" */}
+              {/* 5. "Quick Emergency Instructions" */}
               <EmergencyInstructions />
             </>
           ) : currentRoute === '/sos' ? (

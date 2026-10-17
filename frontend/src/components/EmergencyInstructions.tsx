@@ -55,35 +55,35 @@ export const EmergencyInstructions: React.FC = () => {
         </p>
       </div>
 
-      {/* Single Lightly Tinted Panel with Subtle Separators (gap: 24-32px below header) */}
-      <div className="w-full bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 lg:p-9 shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-0 lg:divide-x lg:divide-slate-200/80">
+      {/* Single Lightly Tinted Panel with Subtle Separators */}
+      <div className="w-full bg-white border border-slate-100 rounded-3xl p-7 sm:p-9 lg:p-10 shadow-[0_4px_24px_rgba(15,23,42,0.03)]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-0 lg:divide-x lg:divide-slate-100">
           {steps.map((item, index) => {
             const Icon = item.icon;
             return (
               <div
                 key={item.number}
-                className={`flex flex-col items-start text-left ${
-                  index > 0 ? 'lg:pl-7' : ''
-                } ${index < steps.length - 1 ? 'lg:pr-7' : ''}`}
+                className={`group flex flex-col items-start text-left ${
+                  index > 0 ? 'lg:pl-8' : ''
+                } ${index < steps.length - 1 ? 'lg:pr-8' : ''}`}
               >
                 {/* Top Badge & Icon */}
-                <div className="w-full flex items-center justify-between mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-700 shrink-0 shadow-2xs">
-                    <Icon className="w-5 h-5 stroke-[2]" />
+                <div className="w-full flex items-center justify-between mb-5">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50/90 border border-blue-100/60 flex items-center justify-center text-blue-600 shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300 shadow-2xs">
+                    <Icon className="w-5 h-5 stroke-[1.9]" />
                   </div>
-                  <span className="text-xs font-mono font-bold tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                  <span className="text-[11px] font-mono font-bold tracking-wider text-blue-600 bg-blue-50/80 border border-blue-100/50 px-2.5 py-1 rounded-lg">
                     {item.number}
                   </span>
                 </div>
 
                 {/* Step Title */}
-                <h3 className="text-base font-bold text-slate-900 tracking-tight">
+                <h3 className="text-[17px] font-bold text-slate-900 tracking-tight mb-2 group-hover:text-blue-900 transition-colors">
                   {item.title}
                 </h3>
 
                 {/* Step Description */}
-                <p className="mt-1.5 text-xs sm:text-sm text-slate-600 leading-relaxed">
+                <p className="text-sm text-slate-500 leading-relaxed font-normal">
                   {item.description}
                 </p>
               </div>

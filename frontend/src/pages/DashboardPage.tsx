@@ -49,7 +49,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
       }
     } catch (err: any) {
       console.error('Polling error:', err);
-      setError('Local backend unreachable on localhost:5000');
+      setError('Local backend unreachable on localhost:5001');
     }
   };
 
@@ -88,7 +88,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
             <span className="font-medium">{error}</span>
           </div>
           <span className="font-mono text-[10px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded border border-red-300">
-            DISCONNECTED • PORT 5000
+            DISCONNECTED • PORT 5001
           </span>
         </div>
       )}

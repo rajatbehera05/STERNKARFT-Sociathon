@@ -113,22 +113,42 @@
   transform-style: preserve-3d;
 }
 
-/* 3D Wireframe Lattice Cube Rotation matching user reference */
-@keyframes rotateWireframeCube {
+/* Continuous 3D Rotating Cube Animation (Dual-axis X and Y rotation without flattening) */
+@keyframes spin3DCube {
   0% {
-    transform: rotateX(-22deg) rotateY(0deg) rotateZ(3deg);
+    transform: rotateX(-24deg) rotateY(0deg);
   }
   50% {
-    transform: rotateX(-32deg) rotateY(180deg) rotateZ(-4deg);
+    transform: rotateX(24deg) rotateY(180deg);
   }
   100% {
-    transform: rotateX(-22deg) rotateY(360deg) rotateZ(3deg);
+    transform: rotateX(-24deg) rotateY(360deg);
+  }
+}
+
+.animate-spin-3d-cube {
+  animation: spin3DCube 12s linear infinite;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* 3D Wireframe Lattice Cube Rotation */
+@keyframes rotateWireframeCube {
+  0% {
+    transform: rotateX(-24deg) rotateY(0deg);
+  }
+  50% {
+    transform: rotateX(24deg) rotateY(180deg);
+  }
+  100% {
+    transform: rotateX(-24deg) rotateY(360deg);
   }
 }
 
 .animate-wireframe-cube {
-  animation: rotateWireframeCube 16s linear infinite;
+  animation: rotateWireframeCube 12s linear infinite;
   transform-style: preserve-3d;
+  will-change: transform;
 }
 
 /* Respect user's motion preference */
@@ -137,9 +157,10 @@
   .animate-cube-main,
   .animate-cube-secondary,
   .animate-float-grid,
-  .animate-wireframe-cube {
+  .animate-wireframe-cube,
+  .animate-spin-3d-cube {
     animation: none !important;
-    transform: rotateX(-24deg) rotateY(35deg) rotateZ(4deg) !important;
+    transform: rotateX(-26deg) rotateY(35deg) rotateZ(0deg) !important;
   }
 }
 

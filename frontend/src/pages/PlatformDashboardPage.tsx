@@ -17,7 +17,8 @@ import {
   Smartphone,
   Cpu,
   Laptop,
-  Gauge
+  Gauge,
+  HeartHandshake
 } from 'lucide-react';
 import { AppRoute, GatewayHealth } from '../types';
 import { api } from '../services/api';
@@ -198,12 +199,12 @@ export const PlatformDashboardPage: React.FC<PlatformDashboardProps> = ({ onNavi
               </h2>
             </div>
             <span className="text-xs font-medium text-slate-500">
-              1 Operational • 1 Planned
+              2 Operational • 1 Planned
             </span>
           </div>
 
-          {/* 3. The Two Module Cards Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+          {/* 3. The Module Cards Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
             {/* Card A: Rescue Communication */}
             <motion.div
               whileHover={{ y: -2, transition: { duration: 0.15 } }}
@@ -402,6 +403,84 @@ export const PlatformDashboardPage: React.FC<PlatformDashboardProps> = ({ onNavi
                       <Info className="w-4 h-4" />
                     </button>
                   </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Card C: Relief Coordination */}
+            <motion.div
+              whileHover={{ y: -2, transition: { duration: 0.15 } }}
+              className="bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-slate-300 transition-all flex flex-col justify-between overflow-hidden"
+            >
+              {/* Top Accent Strip */}
+              <div className="h-1 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-500" />
+
+              <div className="p-6 sm:p-7 flex-grow flex flex-col justify-between">
+                <div>
+                  {/* Tier 1: Header */}
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-2xs">
+                        <HeartHandshake className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                          Relief Coordination
+                        </h3>
+                        <span className="text-xs text-emerald-700 font-medium">
+                          Nagpur Request & Resource Matching
+                        </span>
+                      </div>
+                    </div>
+
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200">
+                      OPERATIONAL
+                    </span>
+                  </div>
+
+                  {/* Tier 2: Description */}
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mt-2 mb-5">
+                    Real geographic Nagpur OpenStreetMap triage, verified civilian request intake, emergency supply reservation, and live delivery tracking.
+                  </p>
+
+                  {/* Tier 3: Feature Highlights */}
+                  <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-4 my-2 space-y-2">
+                    <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                      Core Capabilities
+                    </div>
+                    <div className="space-y-1.5 text-xs text-slate-700">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span>Real Nagpur street map with urgency markers</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+                        <span>Request-to-depot matching (zero over-allocation)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        <span>Urgent unmet needs & dispatch tracking</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tier 4: Footer */}
+                <div className="mt-6 pt-4 border-t border-slate-100 space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500 font-medium">Location Scope</span>
+                    <span className="text-emerald-800 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200">
+                      Nagpur, Maharashtra
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => onNavigate('/rescue/relief')}
+                    className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm tracking-wide shadow-sm hover:shadow transition-all cursor-pointer group"
+                  >
+                    <span>Open Relief Coordination</span>
+                    <ArrowRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                  </button>
                 </div>
               </div>
             </motion.div>

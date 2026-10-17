@@ -10,7 +10,8 @@ import {
   ShieldAlert,
   Menu,
   X,
-  RefreshCw
+  RefreshCw,
+  HeartHandshake,
 } from 'lucide-react';
 import { AppRoute, GatewayHealth } from '../types';
 import { api } from '../services/api';
@@ -62,6 +63,12 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Gateway & Device Status',
     route: '/rescue/devices',
     icon: Cpu,
+  },
+  {
+    id: 'relief',
+    label: 'Relief Coordination',
+    route: '/rescue/relief',
+    icon: HeartHandshake,
   },
   {
     id: 'platform',

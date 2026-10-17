@@ -20,7 +20,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 1200);
-        const res = await fetch('http://localhost:5000/api/health', {
+        const healthUrl = (import.meta as any).env?.VITE_HEALTH_URL || 'http://localhost:5001/api/health';
+        const res = await fetch(healthUrl, {
           signal: controller.signal,
         });
         clearTimeout(timeout);

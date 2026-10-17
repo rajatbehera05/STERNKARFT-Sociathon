@@ -43,6 +43,7 @@ import {
   createInitialReadingsHistory,
   createInitialAlerts,
   generatePresetReading,
+  floodApi,
 } from '../services/floodService';
 
 interface FloodDashboardPageProps {
@@ -176,6 +177,73 @@ export const FloodDashboardPage: React.FC<FloodDashboardPageProps> = ({
   useEffect(() => {
     setDraftThresholds(thresholds);
   }, [thresholds]);
+
+  // Load authoritative configuration, readings history, and active alerts from backend
+  useEffect(() => {
+    let isMounted = true;
+    const fetchInitialData = async () => {
+      try {
+        const [configData, readingsData, alertsData] = await Promise.all([
+          floodApi.getConfig().catch(() => null),
+          floodApi.getReadings({ limit: 30 }).catch(() => null),
+          floodApi.getAlerts().catch(() => null),
+        ]);
+
+        if (!isMounted) return;
+
+        if (configData && configData.reference_height_cm) {
+          setThresholds(configData);
+          setDraftThresholds(configData);
+        }
+
+        if (readingsData && Array.isArray(readingsData.readings) && readingsData.readings.length > 0) {
+          const mapped: SensorReading[] = readingsData.readings
+            .map((r: any) => ({
+              reading_id: r.reading_id,
+              node_id: 'NODE-ESP32-FL01',
+              timestamp: r.timestamp,
+              water_surface_distance_cm: r.water_surface_distance_cm,
+              calculated_depth_cm: r.calculated_depth_cm,
+              reference_height_cm: configData?.reference_height_cm ?? DEFAULT_THRESHOLDS.reference_height_cm,
+              temperature_c: r.temperature_c,
+              humidity_pct: r.humidity_pct,
+              soil_moisture_pct: r.soil_moisture_pct,
+              soil_moisture_raw: r.soil_moisture_pct ? Math.round(r.soil_moisture_pct * 40) : null,
+              trend: r.trend || 'STABLE',
+              data_source: r.data_source || 'SIMULATED',
+              is_valid: r.is_valid !== undefined ? r.is_valid : true,
+            }))
+            .reverse();
+
+          setReadingsHistory(mapped);
+          setLastUpdated(new Date());
+        }
+
+        if (alertsData && Array.isArray(alertsData) && alertsData.length > 0) {
+          const mappedAlerts: FloodAlert[] = alertsData.map((a: any) => ({
+            id: a.id,
+            node_id: 'NODE-ESP32-FL01',
+            rule_name: a.headline || 'Hazard Threshold Alert',
+            trigger_condition: a.action_text || 'Water depth threshold exceeded',
+            severity: a.severity,
+            measured_value: a.trigger_depth_cm ? `${a.trigger_depth_cm} cm` : 'Threshold Breached',
+            threshold_value: `${configData?.watch_depth_cm ?? DEFAULT_THRESHOLDS.watch_depth_cm} cm`,
+            created_at: a.timestamp,
+            acknowledged: a.acknowledged,
+            acknowledged_at: a.acknowledged_at,
+            resolved: false,
+            data_source: a.data_source || 'SIMULATED',
+          }));
+          setAlerts(mappedAlerts);
+        }
+      } catch (err) {
+        // Fall back gracefully to local demo data
+        console.warn('Backend flood telemetry not reachable, operating in local demo state:', err);
+      }
+    };
+
+    fetchInitialData();
+  }, []);
 
   // Latest reading is the last element of readingsHistory
   const latestReading = useMemo(() => {
@@ -337,6 +405,11 @@ export const FloodDashboardPage: React.FC<FloodDashboardPageProps> = ({
   const handleClearDemoAlerts = () => {
     setAlerts((prev) => prev.filter((a) => a.data_source !== 'SIMULATED'));
     setConfirmClearDemoAlerts(false);
+
+    // Sync clear action with backend database
+    floodApi.clearDemoAlerts().catch((err) => {
+      console.warn('Backend clear demo alerts failed:', err);
+    });
   };
 
   // Calibration validation & save handler
@@ -403,6 +476,11 @@ export const FloodDashboardPage: React.FC<FloodDashboardPageProps> = ({
     setThresholds(updated);
     setCalibrationSuccess(true);
     setTimeout(() => setCalibrationSuccess(false), 4000);
+
+    // Persist authoritative thresholds to backend PostgreSQL database
+    floodApi.updateConfig(updated).catch((err) => {
+      console.warn('Failed to persist updated calibration to backend:', err);
+    });
   };
 
   // Export handlers
@@ -503,6 +581,23 @@ export const FloodDashboardPage: React.FC<FloodDashboardPageProps> = ({
     if (newAlert) {
       setAlerts((prev) => [newAlert, ...prev]);
     }
+
+    // Persist simulated frame to backend database (clearly labelled SIMULATED)
+    floodApi
+      .submitTelemetry({
+        reading_id: reading.reading_id,
+        timestamp: reading.timestamp,
+        water_surface_distance_cm: reading.water_surface_distance_cm,
+        reference_height_cm: reading.reference_height_cm,
+        temperature_c: reading.temperature_c,
+        humidity_pct: reading.humidity_pct,
+        soil_moisture_pct: reading.soil_moisture_pct,
+        data_source: 'SIMULATED',
+        is_valid: reading.is_valid,
+      })
+      .catch((err) => {
+        console.warn('Backend telemetry persistence failed (offline demo continues):', err);
+      });
   };
 
   // Auto-simulation interval ticker (if enabled)
@@ -531,6 +626,21 @@ export const FloodDashboardPage: React.FC<FloodDashboardPageProps> = ({
           trend,
         };
 
+        // Submit frame
+        floodApi
+          .submitTelemetry({
+            reading_id: updated.reading_id,
+            timestamp: updated.timestamp,
+            water_surface_distance_cm: updated.water_surface_distance_cm,
+            reference_height_cm: updated.reference_height_cm,
+            temperature_c: updated.temperature_c,
+            humidity_pct: updated.humidity_pct,
+            soil_moisture_pct: updated.soil_moisture_pct,
+            data_source: 'SIMULATED',
+            is_valid: updated.is_valid,
+          })
+          .catch(() => {});
+
         return [...prev.slice(-30), updated];
       });
       setLastUpdated(new Date());
@@ -553,6 +663,11 @@ export const FloodDashboardPage: React.FC<FloodDashboardPageProps> = ({
           : a
       )
     );
+
+    // Sync acknowledgment with backend
+    floodApi.acknowledgeAlert(alertId).catch((err) => {
+      console.warn('Backend alert acknowledgment failed:', err);
+    });
   };
 
   // Risk state badge styling & descriptive titles

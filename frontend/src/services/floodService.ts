@@ -296,3 +296,111 @@ export const generatePresetReading = (
 
   return { reading, newAlert };
 };
+
+// ------------------------------------------------------------------------------
+// DisasterSense Flood Monitoring Backend API Integration
+// ------------------------------------------------------------------------------
+
+const FLOOD_API_BASE = (import.meta as any).env?.VITE_FLOOD_API_BASE_URL || 'http://localhost:5001/api/flood';
+
+export const floodApi = {
+  /**
+   * Fetches latest telemetry status, computed risk level, and freshness.
+   */
+  async getStatus() {
+    const res = await fetch(`${FLOOD_API_BASE}/status`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch flood status');
+    return res.json();
+  },
+
+  /**
+   * Fetches persisted telemetry history with optional pagination.
+   */
+  async getReadings(params?: { limit?: number; offset?: number; dataSource?: string }) {
+    const query = new URLSearchParams();
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+    if (params?.dataSource) query.set('dataSource', params.dataSource);
+    const res = await fetch(`${FLOOD_API_BASE}/readings?${query.toString()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch telemetry history');
+    return res.json();
+  },
+
+  /**
+   * Fetches alerts ledger with optional severity filter.
+   */
+  async getAlerts(params?: { severity?: string; acknowledged?: boolean }) {
+    const query = new URLSearchParams();
+    if (params?.severity) query.set('severity', params.severity);
+    if (params?.acknowledged !== undefined) query.set('acknowledged', String(params.acknowledged));
+    const res = await fetch(`${FLOOD_API_BASE}/alerts?${query.toString()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch flood alerts');
+    return res.json();
+  },
+
+  /**
+   * Acknowledges an active hazard alert.
+   */
+  async acknowledgeAlert(id: string) {
+    const res = await fetch(`${FLOOD_API_BASE}/alerts/${id}/acknowledge`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to acknowledge alert');
+    return res.json();
+  },
+
+  /**
+   * Purges simulated demo alerts, protecting real hardware alerts.
+   */
+  async clearDemoAlerts() {
+    const res = await fetch(`${FLOOD_API_BASE}/alerts/demo`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to clear demo alerts');
+    return res.json();
+  },
+
+  /**
+   * Fetches authoritative threshold configuration.
+   */
+  async getConfig(): Promise<ThresholdConfig> {
+    const res = await fetch(`${FLOOD_API_BASE}/config`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch threshold config');
+    return res.json();
+  },
+
+  /**
+   * Updates and saves authoritative threshold configuration.
+   */
+  async updateConfig(config: ThresholdConfig) {
+    const res = await fetch(`${FLOOD_API_BASE}/config`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to update threshold configuration');
+    }
+    return res.json();
+  },
+
+  /**
+   * Fetches node diagnostics, pin mapping, and actual freshness.
+   */
+  async getDeviceHealth() {
+    const res = await fetch(`${FLOOD_API_BASE}/device-health`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch device health diagnostics');
+    return res.json();
+  },
+
+  /**
+   * Ingests a telemetry packet into the backend database.
+   */
+  async submitTelemetry(reading: Partial<SensorReading>) {
+    const res = await fetch(`${FLOOD_API_BASE}/telemetry`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reading),
+    });
+    if (!res.ok) throw new Error('Failed to ingest telemetry');
+    return res.json();
+  },
+};
+

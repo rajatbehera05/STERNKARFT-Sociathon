@@ -1,0 +1,210 @@
+// ==============================================================================
+// STERN-X Unified Backend Schema
+// Shared PostgreSQL Database for Neon Cloud with Logical Domain Separation
+// ==============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------------------------
+// DOMAIN 1: DisasterSense Flood Monitoring
+// ------------------------------------------------------------------------------
+
+model FloodThreshold {
+  id                  String   @id @default(uuid())
+  referenceHeightCm   Float    @default(200.0)
+  watchDepthCm        Float    @default(80.0)
+  warningDepthCm      Float    @default(120.0)
+  criticalDepthCm     Float    @default(160.0)
+  staleTimeoutSec     Int      @default(30)
+  isCurrent           Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([isCurrent])
+}
+
+model FloodTelemetry {
+  id                    String   @id @default(uuid())
+  readingId             String   @unique
+  timestamp             DateTime
+  waterDistanceCm       Float?
+  calculatedDepthCm     Float?
+  temperatureC          Float?
+  humidityPct           Float?
+  soilMoisturePct       Float?
+  trend                 String   @default("STABLE") // RISING, RECEDING, STABLE, OFFLINE
+  dataSource            String   @default("SIMULATED") // HARDWARE_LIVE or SIMULATED
+  isValid               Boolean  @default(true)
+  createdAt             DateTime @default(now())
+
+  @@index([timestamp(sort: Desc)])
+  @@index([dataSource])
+}
+
+model FloodAlert {
+  id              String    @id @default(uuid())
+  alertId         String    @unique
+  timestamp       DateTime
+  severity        String    // WATCH, WARNING, CRITICAL
+  headline        String
+  actionText      String
+  triggerDepthCm  Float?
+  acknowledged    Boolean   @default(false)
+  acknowledgedAt  DateTime?
+  dataSource      String    @default("SIMULATED") // HARDWARE_LIVE or SIMULATED
+  createdAt       DateTime  @default(now())
+
+  @@index([severity])
+  @@index([acknowledged])
+  @@index([dataSource])
+}
+
+// ------------------------------------------------------------------------------
+// DOMAIN 2: ReQNet Rescue Communication & Operational Triage
+// ------------------------------------------------------------------------------
+
+enum IncidentCategory {
+  TRAPPED_FLOOD
+  MEDICAL_EMERGENCY
+  COLLAPSE_HAZARD
+  SUPPLIES_WATER
+  OTHER
+}
+
+enum PriorityTier {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum IncidentStatus {
+  OPEN
+  ACKNOWLEDGED
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum DeliveryState {
+  DRAFT
+  SUBMITTED
+  GATEWAY_RECEIVED
+  PERSISTED_LOCALLY
+  OPERATOR_ACKNOWLEDGED
+}
+
+enum MessageDeliveryStatus {
+  PENDING
+  TRANSMITTED
+  CONFIRMED_DELIVERED
+  FAILED_OFFLINE
+}
+
+enum ResponderStatus {
+  ACTIVE
+  EN_ROUTE
+  ON_SCENE
+  RESTING
+  OFFLINE
+}
+
+model RescueIncident {
+  id                  String           @id @default(uuid())
+  clientIncidentId    String           @unique
+  category            IncidentCategory @default(TRAPPED_FLOOD)
+  description         String?
+  senderName          String?          @default("Anonymous Civilian")
+  senderPhone         String?
+  headcount           Int              @default(1)
+  hasCriticalInjuries Boolean          @default(false)
+  hasInfantsOrElderly Boolean          @default(false)
+  waterLevelRising    Boolean          @default(false)
+  locationManual      String?
+  latitude            Float?
+  longitude           Float?
+  accuracyMeters      Float?
+  priorityTier        PriorityTier     @default(LOW)
+  status              IncidentStatus   @default(OPEN)
+  deliveryState       DeliveryState    @default(PERSISTED_LOCALLY)
+  acknowledged        Boolean          @default(false)
+  acknowledgedAt      DateTime?
+  operatorNotes       String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  statusHistory       IncidentStatusHistory[]
+  messages            RescueMessage[]
+
+  @@index([status])
+  @@index([priorityTier])
+  @@index([createdAt(sort: Desc)])
+}
+
+model IncidentStatusHistory {
+  id             String         @id @default(uuid())
+  incidentId     String
+  incident       RescueIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  previousStatus IncidentStatus
+  newStatus      IncidentStatus
+  operatorNotes  String?
+  changedAt      DateTime       @default(now())
+
+  @@index([incidentId])
+  @@index([changedAt(sort: Desc)])
+}
+
+model RescueMessage {
+  id             String                @id @default(uuid())
+  messageId      String                @unique
+  incidentId     String
+  incident       RescueIncident        @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  senderId       String?
+  senderName     String
+  senderType     String                @default("CIVILIAN") // CIVILIAN, OPERATOR, RESPONDER, SYSTEM
+  content        String
+  deliveryStatus MessageDeliveryStatus @default(TRANSMITTED)
+  timestamp      DateTime              @default(now())
+  createdAt      DateTime              @default(now())
+
+  @@index([incidentId, timestamp(sort: Asc)])
+}
+
+model Responder {
+  id            String            @id @default(uuid())
+  responderId   String            @unique
+  name          String
+  role          String            // PARAMEDIC, BOAT_CREW, DRONE_OPERATOR, COMMANDER
+  callsign      String            @unique
+  currentStatus ResponderStatus   @default(ACTIVE)
+  latitude      Float?
+  longitude     Float?
+  batteryPct    Int?
+  lastSeenAt    DateTime          @default(now())
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  updates       ResponderUpdate[]
+
+  @@index([currentStatus])
+  @@index([lastSeenAt(sort: Desc)])
+}
+
+model ResponderUpdate {
+  id          String          @id @default(uuid())
+  responderId String
+  responder   Responder       @relation(fields: [responderId], references: [id], onDelete: Cascade)
+  status      ResponderStatus
+  latitude    Float?
+  longitude   Float?
+  batteryPct  Int?
+  timestamp   DateTime        @default(now())
+
+  @@index([responderId, timestamp(sort: Desc)])
+}

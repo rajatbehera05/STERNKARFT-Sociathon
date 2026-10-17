@@ -10,7 +10,9 @@ export type AppRoute =
   | '/flood/dashboard'
   | '/flood'
   | '/map'
-  | '/incidents';
+  | '/incidents'
+  | '/relief'
+  | '/rescue/relief';
 
 export type EmergencyCategory =
   | 'TRAPPED_FLOOD'

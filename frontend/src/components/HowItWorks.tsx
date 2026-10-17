@@ -41,29 +41,29 @@ export const HowItWorks: React.FC = () => {
   return (
     <section id="how-it-works" className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 scroll-mt-6">
       {/* Section Header with rotating 3D cube with grid directly in front of the topic */}
-      <div className="mb-6 sm:mb-8 flex flex-col items-start">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="w-4 h-[2px] bg-red-600 rounded-full" />
-          <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-slate-500">
+      <div className="mb-8 sm:mb-10 flex flex-col items-start">
+        <div className="flex items-center gap-2 mb-2.5">
+          <span className="w-5 h-[2.5px] bg-red-600 rounded-full" />
+          <p className="text-[11px] sm:text-xs font-bold tracking-[0.24em] uppercase text-slate-500">
             HOW IT WORKS
           </p>
         </div>
 
-        {/* Heading with 3D Rotating Wireframe Cube directly IN FRONT OF "From SOS to Rescue" */}
-        <div className="flex items-center gap-3 sm:gap-3.5">
-          <HeadingCubeGrid accent="pink" size={38} />
-          <h2 className="text-xl sm:text-2xl font-extrabold text-[#0f172a] tracking-tight">
+        {/* Heading with 3D Rotating Cube directly IN FRONT OF "From SOS to Rescue" */}
+        <div className="flex items-center gap-4 sm:gap-5">
+          <HeadingCubeGrid accent="red" size={52} animated={true} />
+          <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-slate-900 tracking-[-0.03em] leading-tight">
             From SOS to Rescue
           </h2>
         </div>
 
-        <p className="mt-1.5 text-xs sm:text-sm text-slate-600 max-w-xl">
+        <p className="mt-3 text-sm sm:text-base text-slate-500 max-w-xl font-normal leading-relaxed">
           A simple, local system that connects you to help — step by step.
         </p>
       </div>
 
-      {/* Connected 3-Column Process Layout - immediately below the subtitle */}
-      <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
+      {/* Connected 3-Column Process Layout - Styled as Modern Rounded Cards */}
+      <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-7">
         {steps.map((step, index) => {
           const Icon = step.icon;
           const isLast = index === steps.length - 1;
@@ -71,39 +71,37 @@ export const HowItWorks: React.FC = () => {
           return (
             <div
               key={step.number}
-              className="relative flex flex-col items-start text-left"
+              className="group relative bg-white rounded-3xl p-7 sm:p-8 border border-slate-100 shadow-[0_4px_24px_rgba(15,23,42,0.03)] hover:shadow-[0_16px_36px_rgba(37,99,235,0.08)] hover:border-blue-100 transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between"
             >
-              {/* Top Row: Icon Container and Step Number */}
-              <div className="w-full flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-center shrink-0">
-                    <Icon className={`w-5 h-5 ${step.accentColor} stroke-[2]`} />
+              <div>
+                {/* Top Row: Icon Container and Step Number */}
+                <div className="w-full flex items-center justify-between mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50/90 border border-blue-100/60 flex items-center justify-center text-blue-600 shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300 shadow-2xs">
+                    <Icon className="w-5 h-5 stroke-[1.9]" />
                   </div>
-                  <span className="text-xs font-mono font-bold tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                  <span className="text-[11px] font-mono font-bold tracking-wider text-blue-600 bg-blue-50/80 border border-blue-100/50 px-2.5 py-1 rounded-lg">
                     STEP {step.number}
                   </span>
                 </div>
 
-                {/* Desktop Thin Directional Connector Arrow */}
-                {!isLast && (
-                  <div
-                    className="hidden md:flex items-center pr-2 text-slate-300"
-                    aria-hidden="true"
-                  >
-                    <ArrowRight className="w-4 h-4 stroke-[1.8]" />
-                  </div>
-                )}
+                {/* Step Title */}
+                <h3 className="text-[19px] font-bold text-slate-900 tracking-tight mb-2 group-hover:text-blue-900 transition-colors">
+                  {step.title}
+                </h3>
+
+                {/* Step Description */}
+                <p className="text-sm text-slate-500 leading-relaxed font-normal">
+                  {step.description}
+                </p>
               </div>
 
-              {/* Step Title */}
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-                {step.title}
-              </h3>
-
-              {/* Step Description */}
-              <p className="mt-1 text-xs sm:text-sm text-slate-600 leading-relaxed max-w-sm">
-                {step.description}
-              </p>
+              {/* Step indicator arrow for desktop */}
+              {!isLast && (
+                <div className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-blue-600/80 mt-6 pt-4 border-t border-slate-50">
+                  <span>Next Step</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              )}
             </div>
           );
         })}

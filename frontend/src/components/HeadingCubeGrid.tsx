@@ -4,25 +4,27 @@ import { WireframeCube } from './WireframeCube';
 interface HeadingCubeGridProps {
   className?: string;
   size?: number;
-  accent?: 'pink' | 'red' | 'sky' | 'navy';
+  accent?: 'red' | 'blue' | 'sky' | 'navy' | 'pink';
   animated?: boolean;
 }
 
 export const HeadingCubeGrid: React.FC<HeadingCubeGridProps> = ({
   className = '',
-  size = 38,
-  accent = 'pink',
+  size = 42,
+  accent = 'red',
   animated = true,
 }) => {
-  // Vibrant pink from user reference image is default; fallback to accent if customized
+  // Sophisticated curated color palette matching the STERN-X design system
   const color =
-    accent === 'pink'
-      ? '#FF2A85'
-      : accent === 'red'
-      ? '#E11D48'
+    accent === 'red'
+      ? '#E11D48' // Modern Emergency Crimson
+      : accent === 'blue'
+      ? '#2563EB' // High-Tech Cobalt Blue
       : accent === 'sky'
-      ? '#0EA5E9'
-      : '#334155';
+      ? '#0284C7' // Refined Sky Blue
+      : accent === 'navy'
+      ? '#1E293B' // Deep Slate Navy
+      : '#F43F5E'; // Vibrant Rose (replaces harsh neon pink)
 
   return (
     <WireframeCube

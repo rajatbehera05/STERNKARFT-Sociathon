@@ -44,7 +44,7 @@ export const DeviceStatusPage: React.FC<DeviceStatusPageProps> = ({ onNavigate }
       setLastCheckTime(new Date());
     } catch (err: any) {
       setHealth(null);
-      setBackendError('Connection to local backend (http://localhost:5000) failed.');
+      setBackendError('Connection to local backend (http://localhost:5001) failed.');
       setLatencyMs(null);
     } finally {
       setIsPinging(false);
@@ -109,7 +109,7 @@ export const DeviceStatusPage: React.FC<DeviceStatusPageProps> = ({ onNavigate }
             <XCircle className="w-4 h-4 text-[#E53945] shrink-0" />
             <span>{backendError}</span>
           </div>
-          <span className="font-mono font-bold text-[11px] text-[#E53945]">PORT 5000 DOWN</span>
+          <span className="font-mono font-bold text-[11px] text-[#E53945]">PORT 5001 DOWN</span>
         </div>
       )}
 
@@ -182,7 +182,7 @@ export const DeviceStatusPage: React.FC<DeviceStatusPageProps> = ({ onNavigate }
                     Local Station Backend
                   </h3>
                   <span className="text-[12px] text-[#5D6F89]">
-                    Autonomous Express Server (Port 5000)
+                    Autonomous Express Server (Port 5001)
                   </span>
                 </div>
               </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Map, Radio, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Map, Radio, ArrowLeft, ShieldAlert, HeartHandshake } from 'lucide-react';
 import { AppRoute, GatewayHealth } from '../types';
 import { api } from '../services/api';
 
@@ -106,6 +106,18 @@ export const RescueNavbar: React.FC<RescueNavbarProps> = ({
             >
               <Radio className="w-4 h-4 text-red-400" />
               <span>Incidents</span>
+            </button>
+
+            <button
+              onClick={() => onNavigate('/rescue/relief')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                currentRoute === '/rescue/relief' || currentRoute === '/relief'
+                  ? 'bg-slate-800 text-white font-bold border border-slate-700 shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+              }`}
+            >
+              <HeartHandshake className="w-4 h-4 text-emerald-400" />
+              <span>Relief</span>
             </button>
           </nav>
 

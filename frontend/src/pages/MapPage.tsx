@@ -262,7 +262,7 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
       }
     } catch (err) {
       console.error('Failed to fetch map incidents:', err);
-      setBackendError('Connection to local backend (port 5000) unreachable.');
+      setBackendError('Connection to local backend (port 5001) unreachable.');
     }
   };
 
