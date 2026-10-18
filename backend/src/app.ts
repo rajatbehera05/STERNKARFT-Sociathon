@@ -19,7 +19,11 @@ export function createApp(): Express {
         return callback(null, true);
       }
 
-      if (env.corsAllowedOrigins.includes(origin)) {
+      if (
+        env.corsAllowedOrigins.includes(origin) ||
+        env.corsAllowedOrigins.includes('*') ||
+        origin.endsWith('.vercel.app')
+      ) {
         return callback(null, true);
       }
 

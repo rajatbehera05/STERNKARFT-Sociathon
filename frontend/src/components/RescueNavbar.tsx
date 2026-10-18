@@ -57,7 +57,7 @@ export const RescueNavbar: React.FC<RescueNavbarProps> = ({
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm font-extrabold tracking-wider uppercase text-white leading-none">
-                    ReQNet
+                    ResQnet
                   </span>
                   <span className="text-[10px] font-mono text-red-400 font-bold bg-red-950/80 px-1.5 py-0.5 rounded border border-red-800/80">
                     RESCUE OPS

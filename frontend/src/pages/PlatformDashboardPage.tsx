@@ -92,7 +92,7 @@ export const PlatformDashboardPage: React.FC<PlatformDashboardProps> = ({ onNavi
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-extrabold tracking-wider uppercase text-white leading-none">
-                      ReQNet
+                      ResQnet
                     </span>
                     <span className="text-[10px] font-mono text-slate-400 font-semibold bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700">
                       Platform
@@ -165,7 +165,7 @@ export const PlatformDashboardPage: React.FC<PlatformDashboardProps> = ({ onNavi
             <div>
               {/* Breadcrumb */}
               <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium mb-1">
-                <span>ReQNet</span>
+                <span>ResQnet</span>
                 <span className="text-slate-300">/</span>
                 <span className="text-sky-700 font-semibold">Operations Launchpad</span>
               </div>

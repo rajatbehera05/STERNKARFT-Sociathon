@@ -56,10 +56,13 @@ interface MapPageProps {
 const createRescueMarkerIcon = (
   priority: PriorityTier,
   isSelected: boolean,
-  isRoutedDestination: boolean
+  isRoutedDestination: boolean,
+  isLiveCivilianSos: boolean = false
 ) => {
   const color =
-    priority === 'CRITICAL'
+    isLiveCivilianSos
+      ? '#DC2626'
+      : priority === 'CRITICAL'
       ? '#E53945'
       : priority === 'HIGH'
       ? '#D98A00'
@@ -68,20 +71,27 @@ const createRescueMarkerIcon = (
       : '#5D6F89';
 
   const isCritical = priority === 'CRITICAL';
-  const pulseRing = isRoutedDestination
+  const pulseRing = isLiveCivilianSos
+    ? `<span style="position:absolute; inset:-8px; border-radius:9999px; background-color:#DC2626; opacity:0.55; animation: ping 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>`
+    : isRoutedDestination
     ? `<span style="position:absolute; inset:-8px; border-radius:9999px; background-color:#1685D1; opacity:0.4; animation: ping 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>`
     : isCritical
     ? `<span style="position:absolute; inset:-5px; border-radius:9999px; background-color:${color}; opacity:0.35; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>`
     : '';
 
-  const scale = isRoutedDestination ? 'scale(1.25)' : isSelected ? 'scale(1.15)' : 'scale(1)';
-  const ringColor = isRoutedDestination ? '#65C7FF' : isSelected ? '#17243A' : '#FFFFFF';
-  const ringWidth = isRoutedDestination ? '3.5px' : isSelected ? '3px' : '2px';
+  const scale = isRoutedDestination ? 'scale(1.25)' : isLiveCivilianSos ? 'scale(1.2)' : isSelected ? 'scale(1.15)' : 'scale(1)';
+  const ringColor = isLiveCivilianSos ? '#FEF2F2' : isRoutedDestination ? '#65C7FF' : isSelected ? '#17243A' : '#FFFFFF';
+  const ringWidth = isLiveCivilianSos ? '3.5px' : isRoutedDestination ? '3.5px' : isSelected ? '3px' : '2px';
+
+  const liveSosBadge = isLiveCivilianSos
+    ? `<span style="position:absolute; top:-16px; background:#DC2626; color:#ffffff; font-size:9px; font-weight:900; font-family:sans-serif; padding:1px 5px; border-radius:4px; border:1.5px solid #ffffff; box-shadow:0 2px 6px rgba(0,0,0,0.35); letter-spacing:0.5px; z-index:10; white-space:nowrap;">LIVE SOS</span>`
+    : '';
 
   return L.divIcon({
     className: 'custom-leaflet-marker',
     html: `
       <div style="position:relative; width:36px; height:36px; display:flex; align-items:center; justify-content:center; transform:${scale}; transition:transform 0.15s ease-out;">
+        ${liveSosBadge}
         ${pulseRing}
         <div style="width:30px; height:30px; border-radius:50%; background-color:${color}; border:${ringWidth} solid ${ringColor}; box-shadow:0 3px 10px rgba(23,36,58,0.35); display:flex; align-items:center; justify-content:center; color:#ffffff;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -464,7 +474,7 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
     };
   }, [selectedIncident?.id]);
 
-  // Handle cross-page route navigation via session storage
+  // Handle cross-page route navigation or direct SOS focus via session storage
   useEffect(() => {
     const pendingRouteId = sessionStorage.getItem('active_rescue_route_id');
     if (pendingRouteId && incidents.length > 0) {
@@ -472,6 +482,15 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
       const target = incidents.find((i) => i.id === pendingRouteId);
       if (target) {
         handleViewRescuePath(target);
+      }
+    }
+
+    const focusIncidentId = sessionStorage.getItem('focus_incident_id');
+    if (focusIncidentId && incidents.length > 0) {
+      sessionStorage.removeItem('focus_incident_id');
+      const target = incidents.find((i) => i.id === focusIncidentId || i.client_incident_id === focusIncidentId);
+      if (target) {
+        setSelectedIncident(target);
       }
     }
   }, [incidents]);
@@ -877,12 +896,13 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
                 const lon = incident.location_geo!.longitude!;
                 const isSelected = selectedIncident?.id === incident.id;
                 const isRoutedDestination = activeRescueRoute?.incidentId === incident.id;
+                const isLiveCivilianSos = !incident.client_incident_id?.startsWith('seed-');
 
                 return (
                   <Marker
                     key={incident.id}
                     position={[lat, lon]}
-                    icon={createRescueMarkerIcon(incident.priority_tier, isSelected, isRoutedDestination)}
+                    icon={createRescueMarkerIcon(incident.priority_tier, isSelected, isRoutedDestination, isLiveCivilianSos)}
                     eventHandlers={{
                       click: () => {
                         setSelectedIncident(incident);
@@ -893,9 +913,20 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
                       <div className="p-3.5 space-y-2 min-w-[250px] max-w-[290px]">
                         {/* Popup Header */}
                         <div className="flex items-center justify-between border-b border-[#DCE6F1] pb-2">
-                          <span className="font-mono font-bold text-[13px] text-[#17243A]">
-                            {incident.id}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-[13px] text-[#17243A]">
+                              {incident.id}
+                            </span>
+                            {isLiveCivilianSos ? (
+                              <span className="text-[9px] font-mono font-black bg-red-600 text-white px-1.5 py-0.5 rounded-full border border-red-700 animate-pulse">
+                                LIVE SOS
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-mono font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full border border-slate-300">
+                                DEMO
+                              </span>
+                            )}
+                          </div>
                           <PriorityBadge priority={incident.priority_tier} />
                         </div>
 
@@ -915,6 +946,7 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
                           </div>
                           <span className="block font-mono text-[11px] text-[#0B9B73] mt-1 bg-[#ECFDF5] px-1.5 py-0.5 rounded border border-[#A7F3D0]">
                             GPS: {lat.toFixed(4)}, {lon.toFixed(4)}
+                            {incident.location_geo?.accuracy_meters ? ` (±${incident.location_geo.accuracy_meters}m)` : ''}
                           </span>
                         </div>
 
@@ -1535,6 +1567,15 @@ export const MapPage: React.FC<MapPageProps> = ({ onNavigate }) => {
                         <span className="font-mono text-[13px] font-bold text-[#17243A]">
                           {incident.id}
                         </span>
+                        {!incident.client_incident_id?.startsWith('seed-') ? (
+                          <span className="text-[9px] font-mono font-black bg-red-600 text-white px-1.5 py-0.5 rounded border border-red-700 animate-pulse">
+                            LIVE SOS
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-mono font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-300">
+                            DEMO
+                          </span>
+                        )}
                         <PriorityBadge priority={incident.priority_tier} />
                       </div>
                       <StatusBadge status={incident.status} />

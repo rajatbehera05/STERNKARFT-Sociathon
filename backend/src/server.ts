@@ -6,7 +6,8 @@ import { verifyPrismaConnection, closePrisma } from './db/prisma.js';
 async function startServer(): Promise<http.Server> {
   // 1. Initialize & verify PostgreSQL connection
   try {
-    console.log(`[Database] Target: PostgreSQL (host: localhost, port: 5433, db: sternkraft_db)`);
+    const dbTarget = env.DATABASE_URL.includes('@') ? env.DATABASE_URL.split('@')[1] : 'configured database';
+    console.log(`[Database] Target: PostgreSQL (${dbTarget})`);
     const verification = await verifyPrismaConnection();
     if (verification.ok) {
       console.log(`[Database] PostgreSQL connected successfully (${verification.latency_ms}ms)`);

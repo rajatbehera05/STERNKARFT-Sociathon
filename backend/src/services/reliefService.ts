@@ -159,7 +159,9 @@ export class ReliefService {
         urgencyReason,
         items: {
           create: input.items.map((i) => ({
-            category: categoryEnum,
+            category: (i as any).category && validCategories.includes((i as any).category)
+              ? (i as any).category
+              : categoryEnum,
             name: i.name.trim(),
             requestedQty: Number(i.requestedQty),
             allocatedQty: 0,

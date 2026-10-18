@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertTriangle,
@@ -13,7 +13,9 @@ import {
   Home,
   Package,
   HelpCircle,
-  Clock
+  Clock,
+  ShieldAlert,
+  X
 } from 'lucide-react';
 import { AppRoute, EmergencyCategory } from '../types';
 import { api } from '../services/api';
@@ -40,11 +42,12 @@ export const SosPage: React.FC<SosPageProps> = ({ onNavigate }) => {
   const [senderName, setSenderName] = useState('');
   const [senderPhone, setSenderPhone] = useState('');
 
-  // GPS state (strictly optional)
+  // Real GPS state with explicit permission & error states
   const [gpsData, setGpsData] = useState<{ latitude: number | null; longitude: number | null; accuracy_meters?: number | null } | null>(null);
-  const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'success' | 'unavailable'>('idle');
+  const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'success' | 'denied' | 'unavailable' | 'timeout'>('idle');
 
-  // Submission state
+  // Submission & Confirmation modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submittedResult, setSubmittedResult] = useState<{
@@ -56,9 +59,9 @@ export const SosPage: React.FC<SosPageProps> = ({ onNavigate }) => {
     deduplicated?: boolean;
   } | null>(null);
 
-  // Attempt browser GPS (gracefully handling insecure HTTP contexts)
+  // Capture real browser GPS location using navigator.geolocation
   const handleCaptureGps = () => {
-    if (!navigator.geolocation) {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
       setGpsStatus('unavailable');
       return;
     }
@@ -74,15 +77,43 @@ export const SosPage: React.FC<SosPageProps> = ({ onNavigate }) => {
         setGpsStatus('success');
       },
       (err) => {
-        console.warn('GPS capture unavailable on local AP:', err.message);
-        setGpsStatus('unavailable');
+        console.warn('Real browser GPS probe notice:', err.message);
+        if (err.code === err.PERMISSION_DENIED) {
+          setGpsStatus('denied');
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          setGpsStatus('unavailable');
+        } else if (err.code === err.TIMEOUT) {
+          setGpsStatus('timeout');
+        } else {
+          setGpsStatus('unavailable');
+        }
       },
-      { timeout: 8000, enableHighAccuracy: true }
+      { timeout: 10000, enableHighAccuracy: true, maximumAge: 5000 }
     );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Automatically request location when the SOS form loads
+  useEffect(() => {
+    handleCaptureGps();
+  }, []);
+
+  // Form submit handler - requires location and opens explicit confirmation dialog
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    // Require either genuine GPS coordinates or a manual landmark description
+    if (!gpsData && !locationManual.trim()) {
+      setError('Please capture your real GPS location or enter a landmark/address so rescuers can locate you.');
+      return;
+    }
+
+    setShowConfirmModal(true);
+  };
+
+  // Execute genuine submission to backend API after explicit confirmation
+  const executeSubmit = async () => {
+    if (isSubmitting) return; // Prevent duplicate clicks
     setIsSubmitting(true);
     setError(null);
 
@@ -92,7 +123,9 @@ export const SosPage: React.FC<SosPageProps> = ({ onNavigate }) => {
       const result = await api.submitSos({
         client_incident_id: clientUuid,
         category,
-        description: locationManual ? `Distress Report at: ${locationManual}` : 'Emergency distress signal from civilian client',
+        description: locationManual
+          ? `Distress Report at: ${locationManual}`
+          : 'Emergency civilian distress report with verified browser coordinates',
         sender_name: senderName.trim() || 'Anonymous Civilian',
         sender_phone: senderPhone.trim() || undefined,
         headcount,
@@ -103,10 +136,12 @@ export const SosPage: React.FC<SosPageProps> = ({ onNavigate }) => {
         location_geo: gpsData,
       });
 
+      setShowConfirmModal(false);
       setSubmittedResult(result);
     } catch (err: any) {
       console.error('SOS submission failed:', err);
-      setError(err.message || 'Transmission failed. Ensure connection to ReQNet gateway.');
+      setError(err.message || 'Transmission failed. Ensure backend connection to STERN-X.');
+      setShowConfirmModal(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -192,6 +227,18 @@ export const SosPage: React.FC<SosPageProps> = ({ onNavigate }) => {
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2 max-w-md mx-auto">
               <button
                 onClick={() => {
+                  if (submittedResult?.incident_id) {
+                    sessionStorage.setItem('focus_incident_id', submittedResult.incident_id);
+                  }
+                  onNavigate('/rescue/map');
+                }}
+                className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-red-600/20"
+              >
+                <MapPin className="w-4 h-4" />
+                <span>View on Rescue Map</span>
+              </button>
+              <button
+                onClick={() => {
                   setSubmittedResult(null);
                   setLocationManual('');
                 }}
@@ -203,7 +250,7 @@ export const SosPage: React.FC<SosPageProps> = ({ onNavigate }) => {
                 onClick={() => onNavigate('/dashboard')}
                 className="w-full py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-300 transition-colors cursor-pointer"
               >
-                Go to Platform Dashboard
+                Go to Dashboard
               </button>
             </div>
           </motion.div>
@@ -211,7 +258,7 @@ export const SosPage: React.FC<SosPageProps> = ({ onNavigate }) => {
           /* SOS Submission Form */
           <motion.form
             key="form"
-            onSubmit={handleSubmit}
+            onSubmit={handleFormSubmit}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
@@ -391,38 +438,69 @@ export const SosPage: React.FC<SosPageProps> = ({ onNavigate }) => {
                 className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 font-medium placeholder:text-slate-400"
               />
 
-              {/* Optional GPS Button with truthful fallback */}
-              <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                <div className="flex items-center gap-2">
-                  <Navigation className="w-4 h-4 text-sky-600 shrink-0" />
-                  <div>
-                    {gpsStatus === 'idle' && (
-                      <span className="text-slate-600 text-[11px]">Optional GPS Capture (HTTP softAP mode)</span>
-                    )}
-                    {gpsStatus === 'locating' && (
-                      <span className="text-sky-700 text-[11px] font-semibold">Probing coordinates...</span>
-                    )}
-                    {gpsStatus === 'success' && gpsData && (
-                      <span className="text-emerald-700 text-[11px] font-mono font-bold">
-                        Lat: {gpsData.latitude}, Lon: {gpsData.longitude} (±{gpsData.accuracy_meters}m)
-                      </span>
-                    )}
-                    {gpsStatus === 'unavailable' && (
-                      <span className="text-amber-700 text-[11px]">
-                        GPS unavailable on offline Wi-Fi. Manual landmark will be used.
-                      </span>
-                    )}
-                  </div>
-                </div>
+              {/* GPS Status Card with Truthful Feedback */}
+              <div className={`p-3 rounded-2xl border text-xs transition-colors ${
+                gpsStatus === 'success'
+                  ? 'bg-emerald-50/70 border-emerald-200'
+                  : gpsStatus === 'denied' || gpsStatus === 'unavailable' || gpsStatus === 'timeout'
+                  ? 'bg-amber-50/70 border-amber-200'
+                  : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <Navigation className={`w-4 h-4 shrink-0 mt-0.5 ${
+                      gpsStatus === 'success' ? 'text-emerald-600' : gpsStatus === 'locating' ? 'text-sky-600 animate-spin' : 'text-slate-500'
+                    }`} />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wide">
+                          Device Coordinates
+                        </span>
+                        {gpsStatus === 'success' && (
+                          <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded border border-emerald-300">
+                            VERIFIED REAL GPS
+                          </span>
+                        )}
+                      </div>
 
-                <button
-                  type="button"
-                  onClick={handleCaptureGps}
-                  disabled={gpsStatus === 'locating'}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold text-[11px] transition-colors cursor-pointer shrink-0 disabled:opacity-50"
-                >
-                  {gpsStatus === 'success' ? 'Recapture' : 'Attempt GPS'}
-                </button>
+                      {gpsStatus === 'idle' && (
+                        <p className="text-slate-500 text-[11px] mt-0.5">Acquiring current browser coordinates...</p>
+                      )}
+                      {gpsStatus === 'locating' && (
+                        <p className="text-sky-700 text-[11px] font-medium mt-0.5 animate-pulse">Requesting high-accuracy browser location...</p>
+                      )}
+                      {gpsStatus === 'success' && gpsData && (
+                        <p className="text-emerald-800 text-[11px] font-mono font-bold mt-0.5">
+                          {gpsData.latitude}, {gpsData.longitude} <span className="font-normal text-emerald-600">(±{gpsData.accuracy_meters}m radius)</span>
+                        </p>
+                      )}
+                      {gpsStatus === 'denied' && (
+                        <p className="text-amber-800 text-[11px] mt-0.5">
+                          GPS permission denied by browser. Responders will locate you via manual landmark above.
+                        </p>
+                      )}
+                      {gpsStatus === 'unavailable' && (
+                        <p className="text-amber-800 text-[11px] mt-0.5">
+                          Location unavailable from device. Please enter an accurate landmark above.
+                        </p>
+                      )}
+                      {gpsStatus === 'timeout' && (
+                        <p className="text-amber-800 text-[11px] mt-0.5">
+                          GPS probe timed out. Please enter landmark above or click retry.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleCaptureGps}
+                    disabled={gpsStatus === 'locating'}
+                    className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold text-[11px] transition-colors cursor-pointer shrink-0 disabled:opacity-50 shadow-xs"
+                  >
+                    {gpsStatus === 'locating' ? 'Locating...' : gpsStatus === 'success' ? 'Recapture' : 'Retry GPS'}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -479,6 +557,106 @@ export const SosPage: React.FC<SosPageProps> = ({ onNavigate }) => {
               </span>
             </div>
           </motion.form>
+        )}
+      </AnimatePresence>
+
+      {/* Explicit Confirmation Dialog (prevents accidental or test submissions) */}
+      <AnimatePresence>
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl border border-red-200 shadow-2xl max-w-md w-full p-6 space-y-5"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-red-100 border border-red-200 flex items-center justify-center text-red-600 shrink-0">
+                    <ShieldAlert className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 leading-tight">
+                      Confirm Emergency SOS
+                    </h3>
+                    <span className="text-[10px] font-mono font-bold text-red-600 uppercase">
+                      Live Incident Transmission
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                You are about to transmit an active distress incident to the local disaster response queue and map.
+              </p>
+
+              {/* Summary Breakdown */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-2 font-mono">
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-sans">Category:</span>
+                  <span className="font-bold text-slate-800">{category}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-sans">Civilians Needing Rescue:</span>
+                  <span className="font-bold text-slate-800">{headcount}</span>
+                </div>
+                <div className="flex justify-between items-start gap-2">
+                  <span className="text-slate-500 font-sans shrink-0">Location:</span>
+                  <span className="font-bold text-slate-800 text-right">
+                    {gpsData
+                      ? `${gpsData.latitude}, ${gpsData.longitude} (±${gpsData.accuracy_meters}m)`
+                      : locationManual || 'Not provided'}
+                  </span>
+                </div>
+                {gpsData ? (
+                  <div className="pt-1 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-emerald-700 font-bold">
+                    <span>GPS Origin:</span>
+                    <span>Verified Browser GPS</span>
+                  </div>
+                ) : (
+                  <div className="pt-1 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-amber-700 font-bold">
+                    <span>GPS Origin:</span>
+                    <span>Manual Landmark Only</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmModal(false)}
+                  disabled={isSubmitting}
+                  className="flex-1 py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={executeSubmit}
+                  disabled={isSubmitting}
+                  className="flex-1 py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/30 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Transmitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Transmit SOS</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

@@ -92,6 +92,51 @@ export const UrgentNeedsPanel: React.FC<UrgentNeedsPanelProps> = ({
           </div>
         )}
 
+        {/* Section 0: Newly Arrived Requests Awaiting Verification (Top Visibility) */}
+        {pendingQueue.length > 0 && (
+          <div className="p-3 bg-amber-50/90 border border-amber-300 rounded-xl text-xs space-y-2 shadow-xs">
+            <div className="flex items-center justify-between font-bold text-amber-950">
+              <span className="flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+                <span>New Requests Awaiting Verification</span>
+              </span>
+              <span className="bg-amber-200/80 text-amber-900 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold">
+                {pendingQueue.length} PENDING
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {pendingQueue.slice(0, 3).map((req) => (
+                <div
+                  key={req.id}
+                  onClick={() => onSelectRequest(req)}
+                  className="p-2 rounded-lg bg-white border border-amber-200 hover:border-amber-400 hover:shadow-xs cursor-pointer flex items-center justify-between transition-all"
+                >
+                  <div className="truncate max-w-[190px]">
+                    <div className="flex items-center gap-1">
+                      <span className="font-mono font-bold text-slate-900 text-[11px]">{req.id}</span>
+                      <span className="text-[10px] text-amber-700 font-semibold">• {req.location.locality}</span>
+                    </div>
+                    <span className="text-slate-600 text-[10.5px] truncate block">
+                      {req.requesterName ? `${req.requesterName}: ` : ''}
+                      {req.items.map((i) => `${i.name} (${i.requestedQty})`).join(', ')}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenDetails(req);
+                    }}
+                    className="text-[10px] font-bold text-amber-950 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-2 py-1 rounded-md transition-colors shrink-0"
+                  >
+                    Verify
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Section A: Verified Immediate & Urgent Unmet Needs */}
         <div>
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">

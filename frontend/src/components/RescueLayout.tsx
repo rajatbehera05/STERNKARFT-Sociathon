@@ -145,7 +145,7 @@ export const RescueLayout: React.FC<RescueLayoutProps> = ({
             </div>
             <div className="flex flex-col text-left">
               <span className="font-extrabold text-[15px] tracking-wider uppercase text-[#F8FAFC] leading-none">
-                {isRelief ? 'ReliefCoord' : 'ReQNet'}
+                {isRelief ? 'ReliefCoord' : 'ResQnet'}
               </span>
               <span className="text-[11px] text-[#94A3B8] font-medium leading-tight mt-0.5">
                 {isRelief ? 'Nagpur Relief' : 'Rescue Comms'}
@@ -193,7 +193,7 @@ export const RescueLayout: React.FC<RescueLayoutProps> = ({
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-[17px] font-black tracking-wider uppercase text-[#F8FAFC] leading-none">
-                {isRelief ? 'ReliefCoord' : 'ReQNet'}
+                {isRelief ? 'ReliefCoord' : 'ResQnet'}
               </span>
               <span className="text-[12px] font-semibold text-[#65C7FF] mt-1 tracking-wide">
                 {isRelief ? 'Relief Coordination' : 'Rescue Communication'}

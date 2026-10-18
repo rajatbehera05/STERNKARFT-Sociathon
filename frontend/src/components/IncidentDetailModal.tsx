@@ -48,6 +48,15 @@ export const IncidentDetailModal: React.FC<IncidentDetailModalProps> = ({
             <span className="text-[18px] font-mono font-bold text-[#17243A]">
               {incident.id}
             </span>
+            {!incident.client_incident_id?.startsWith('seed-') ? (
+              <span className="text-[10px] font-mono font-black bg-red-600 text-white px-2 py-0.5 rounded border border-red-700 animate-pulse">
+                REAL CIVILIAN SOS (LIVE GPS)
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-300">
+                SEEDED DEMO INCIDENT
+              </span>
+            )}
             <PriorityBadge priority={incident.priority_tier} />
             <StatusBadge status={incident.status} />
           </div>

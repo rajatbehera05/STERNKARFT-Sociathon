@@ -7,7 +7,7 @@ export const Footer: React.FC = () => {
         {/* Brand Name & Short Mission Line */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
           <span className="text-sm font-extrabold tracking-wider text-slate-900 uppercase">
-            ReQNet
+            ResQnet
           </span>
           <span className="hidden sm:inline text-slate-300 font-light">•</span>
           <span className="text-xs text-slate-600 font-medium">

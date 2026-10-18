@@ -50,26 +50,47 @@ export const ReliefCoordinationPage: React.FC<ReliefCoordinationPageProps> = () 
   const [isLoadingBackend, setIsLoadingBackend] = useState(false);
   const [isDbConnected, setIsDbConnected] = useState(false);
 
-  // Synchronize with PostgreSQL on mount
+  // Synchronize with PostgreSQL on mount & interval
   const loadData = async () => {
     setIsLoadingBackend(true);
     try {
-      const [backendRequests, backendInventory, backendDeliveries] = await Promise.all([
+      const [requestsRes, inventoryRes, deliveriesRes] = await Promise.allSettled([
         reliefApi.getRequests(),
         reliefApi.getInventory(),
         reliefApi.getDeliveries(),
       ]);
 
-      if (backendRequests && backendRequests.length > 0) {
+      if (requestsRes.status === 'fulfilled' && requestsRes.value && requestsRes.value.length > 0) {
+        const backendRequests = requestsRes.value;
         setRequests(backendRequests);
+
+        // Check if there is a newly submitted request to focus
+        const focusRequestId = sessionStorage.getItem('focus_relief_request_id');
+        if (focusRequestId) {
+          sessionStorage.removeItem('focus_relief_request_id');
+          const target = backendRequests.find((r) => r.id === focusRequestId);
+          if (target) {
+            setSelectedRequest(target);
+          }
+        } else {
+          setSelectedRequest((prev) => {
+            if (!prev || prev.id.startsWith('REQ-NGP-DEMO') || prev.id === INITIAL_RELIEF_REQUESTS[0].id) {
+              return backendRequests[0];
+            }
+            const exists = backendRequests.find((r) => r.id === prev.id);
+            return exists || backendRequests[0];
+          });
+        }
+        setIsDbConnected(true);
       }
-      if (backendInventory && backendInventory.length > 0) {
-        setInventory(backendInventory);
+
+      if (inventoryRes.status === 'fulfilled' && inventoryRes.value && inventoryRes.value.length > 0) {
+        setInventory(inventoryRes.value);
       }
-      if (backendDeliveries && backendDeliveries.length > 0) {
-        setDeliveries(backendDeliveries);
+
+      if (deliveriesRes.status === 'fulfilled' && deliveriesRes.value && deliveriesRes.value.length > 0) {
+        setDeliveries(deliveriesRes.value);
       }
-      setIsDbConnected(true);
     } catch (err) {
       console.warn('PostgreSQL fetch fallback to local state:', err);
     } finally {
@@ -79,7 +100,7 @@ export const ReliefCoordinationPage: React.FC<ReliefCoordinationPageProps> = () 
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 10000); // 10s live polling
+    const interval = setInterval(loadData, 3000); // 3s live polling
     return () => clearInterval(interval);
   }, []);
 

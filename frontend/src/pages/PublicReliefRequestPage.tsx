@@ -318,6 +318,7 @@ export const PublicReliefRequestPage: React.FC<PublicReliefRequestPageProps> = (
         requesterName: requesterName.trim() || undefined,
         contactNumber: contactNumber.trim() || undefined,
         organization: organization.trim() || undefined,
+        category: items[0]?.category || 'OTHER_ESSENTIALS',
         locality: locality.trim() || 'Nagpur Central',
         addressOrLandmark: addressOrLandmark.trim(),
         latitude: coords.lat,
@@ -484,6 +485,16 @@ export const PublicReliefRequestPage: React.FC<PublicReliefRequestPageProps> = (
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
                 <button
+                  onClick={() => {
+                    sessionStorage.setItem('focus_relief_request_id', submittedData.trackingId);
+                    onNavigate('/rescue/relief');
+                  }}
+                  className="w-full sm:flex-1 py-3.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-blue-600/20"
+                >
+                  <HeartHandshake className="w-4 h-4" />
+                  <span>View on Relief Dashboard</span>
+                </button>
+                <button
                   onClick={() => onNavigate('/track-relief')}
                   className="w-full sm:flex-1 py-3.5 px-6 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-colors cursor-pointer"
                 >
@@ -506,13 +517,13 @@ export const PublicReliefRequestPage: React.FC<PublicReliefRequestPageProps> = (
                   }}
                   className="w-full sm:w-auto py-3.5 px-6 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-sm transition-colors cursor-pointer"
                 >
-                  Submit Another Request
+                  Submit Another
                 </button>
                 <button
                   onClick={() => onNavigate('/')}
                   className="w-full sm:w-auto py-3.5 px-6 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-sm transition-colors cursor-pointer"
                 >
-                  Return to Home
+                  Home
                 </button>
               </div>
             </div>
