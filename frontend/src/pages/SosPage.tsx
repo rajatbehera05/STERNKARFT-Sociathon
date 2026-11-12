@@ -221,36 +221,29 @@ export const SosPage: React.FC<SosPageProps> = ({ onNavigate }) => {
                 <li>Stay on elevated floors or rooftops away from electrical panels.</li>
                 <li>Conserve phone battery; do not stream media or leave flashlight on continuously.</li>
                 <li>First responders actively monitor the incident queue at this station.</li>
+                <li>Rescue teams are dispatched according to triage priority. Please keep your device ready.</li>
               </ul>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2 max-w-md mx-auto">
               <button
-                onClick={() => {
-                  if (submittedResult?.incident_id) {
-                    sessionStorage.setItem('focus_incident_id', submittedResult.incident_id);
-                  }
-                  onNavigate('/rescue/map');
-                }}
-                className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-red-600/20"
-              >
-                <MapPin className="w-4 h-4" />
-                <span>View on Rescue Map</span>
-              </button>
-              <button
+                type="button"
                 onClick={() => {
                   setSubmittedResult(null);
                   setLocationManual('');
                 }}
-                className="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-red-600/20"
               >
-                Submit Additional Report
+                <Send className="w-4 h-4" />
+                <span>Submit Additional Report</span>
               </button>
               <button
-                onClick={() => onNavigate('/dashboard')}
-                className="w-full py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-300 transition-colors cursor-pointer"
+                type="button"
+                onClick={() => onNavigate('/')}
+                className="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
               >
-                Go to Dashboard
+                <ArrowLeft className="w-4 h-4" />
+                <span>Return to Home</span>
               </button>
             </div>
           </motion.div>

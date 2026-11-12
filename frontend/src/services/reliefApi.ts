@@ -15,11 +15,9 @@ export const DEFAULT_OPERATOR_TOKEN = 'reqnet-field-operator-authorized-key-01';
 export const authStorage = {
   getToken(): string | null {
     try {
-      const stored = localStorage.getItem(TOKEN_KEY);
-      if (stored) return stored;
-      return DEFAULT_OPERATOR_TOKEN;
+      return localStorage.getItem(TOKEN_KEY);
     } catch {
-      return DEFAULT_OPERATOR_TOKEN;
+      return null;
     }
   },
   setToken(token: string) {
@@ -37,7 +35,11 @@ export const authStorage = {
     }
   },
   hasToken(): boolean {
-    return true;
+    try {
+      return Boolean(localStorage.getItem(TOKEN_KEY));
+    } catch {
+      return false;
+    }
   },
 };
 
